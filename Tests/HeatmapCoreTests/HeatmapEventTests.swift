@@ -1,64 +1,77 @@
-import XCTest
+import Testing
+import Foundation
 @testable import HeatmapCore
 
-final class HeatmapEventTests: XCTestCase {
+@Suite struct HeatmapEventTests {
 
-    func test_tap_factory_sets_scroll_fields_nil() {
+    @Test func tapFactoryLeavesScrollFieldsNil() {
         let e = HeatmapEvent.tap(
             screen: "loan_detail", x: 0.42, y: 0.73,
             screenW: 390, screenH: 844, device: "iPhone15,3",
-            orientation: .portrait, ts: 1_719_800_000_000
-        )
-        XCTAssertEqual(e.type, .tap)
-        XCTAssertEqual(e.x, 0.42)
-        XCTAssertNil(e.scrollDepth)
-        XCTAssertNil(e.scrollOffsetY)
-        XCTAssertEqual(e.schemaVersion, HeatmapEvent.currentSchemaVersion)
+            orientation: .portrait, ts: 1_719_800_000_000)
+        #expect(e.type == .tap)
+        #expect(e.x == 0.42)
+        #expect(e.scrollDepth == nil)
+        #expect(e.scrollOffsetY == nil)
+        #expect(e.schemaVersion == HeatmapEvent.currentSchemaVersion)
     }
 
-    func test_scroll_factory_sets_tap_fields_nil() {
+    @Test func scrollFactoryLeavesTapFieldsNil() {
         let e = HeatmapEvent.scroll(
             screen: "loan_detail", scrollDepth: 0.65, scrollOffsetY: 1240,
             screenW: 390, screenH: 844, device: "iPhone15,3",
-            orientation: .portrait, ts: 1_719_800_000_000
-        )
-        XCTAssertEqual(e.type, .scroll)
-        XCTAssertNil(e.x)
-        XCTAssertNil(e.y)
-        XCTAssertEqual(e.scrollDepth, 0.65)
+            orientation: .portrait, ts: 1)
+        #expect(e.type == .scroll)
+        #expect(e.x == nil)
+        #expect(e.y == nil)
+        #expect(e.scrollDepth == 0.65)
     }
 
-    func test_codable_roundtrip() throws {
+    @Test func codableRoundTripIsLossless() throws {
         let e = HeatmapEvent.tap(
             screen: "home", x: 0.1, y: 0.2, screenW: 390, screenH: 844,
-            device: "iPhone15,3", orientation: .portrait, ts: 42
-        )
+            device: "iPhone15,3", orientation: .portrait, ts: 42)
         let data = try JSONEncoder().encode(e)
         let decoded = try JSONDecoder().decode(HeatmapEvent.self, from: data)
-        XCTAssertEqual(e, decoded)
+        #expect(decoded == e)
     }
 
-    func test_json_field_names_match_wire_contract() throws {
+    @Test func eachEventHasUniqueId() {
+        let a = HeatmapEvent.stubTapCore()
+        let b = HeatmapEvent.stubTapCore()
+        #expect(a.id != b.id)
+    }
+
+    @Test func wireContractContainsAllFields() throws {
         let e = HeatmapEvent.scroll(
             screen: "s", scrollDepth: 0.5, scrollOffsetY: 100,
             screenW: 390, screenH: 844, device: "iPhone15,3",
-            orientation: .portrait, ts: 7
-        )
-        let obj = try JSONSerialization.jsonObject(
-            with: JSONEncoder().encode(e)) as? [String: Any]
-        let keys = Set((obj ?? [:]).keys)
-        for k in ["schemaVersion", "id", "type", "screen", "screenW", "screenH", "device", "orientation", "ts", "scrollDepth", "scrollOffsetY"] {
-            XCTAssertTrue(keys.contains(k), "wire 필드 누락: \(k)")
+            orientation: .portrait, ts: 7)
+        let obj = try #require(
+            try JSONSerialization.jsonObject(with: JSONEncoder().encode(e)) as? [String: Any])
+        let keys = Set(obj.keys)
+        for k in ["schemaVersion", "id", "type", "screen", "screenW", "screenH",
+                  "device", "orientation", "ts", "scrollDepth", "scrollOffsetY"] {
+            #expect(keys.contains(k), "wire 필드 누락: \(k)")
         }
     }
 
-    func test_decoding_ignores_unknown_future_field() throws {
-        // forward-compat: 미지 필드는 무시하고 디코딩되어야 한다.
+    @Test func decodingToleratesMissingIdAndUnknownFields() throws {
+        // 구버전 버퍼(id/schemaVersion 없음) + 미래 필드도 유실 없이 디코딩.
         let json = """
-        {"schemaVersion":1,"type":"tap","screen":"x","x":0.5,"y":0.5,
+        {"type":"tap","screen":"x","x":0.5,"y":0.5,
          "screenW":390,"screenH":844,"device":"iPhone15,3",
          "orientation":"portrait","ts":1,"futureField":"ignored"}
         """.data(using: .utf8)!
-        XCTAssertNoThrow(try JSONDecoder().decode(HeatmapEvent.self, from: json))
+        let decoded = try JSONDecoder().decode(HeatmapEvent.self, from: json)
+        #expect(decoded.screen == "x")
+        #expect(!decoded.id.isEmpty)   // 누락 시 자동 생성
+    }
+}
+
+private extension HeatmapEvent {
+    static func stubTapCore() -> HeatmapEvent {
+        .tap(screen: "s", x: 0.5, y: 0.5, screenW: 390, screenH: 844,
+             device: "d", orientation: .portrait, ts: 1)
     }
 }

@@ -1,10 +1,9 @@
 import Foundation
-import XCTest
 @testable import HeatmapKit
 @testable import HeatmapCore
 
 /// 주입용 가짜 전송기(스레드 안전). 결과 스크립트를 순서대로 반환한다.
-final class FakeUploader: HeatmapUploader {
+final class FakeUploader: HeatmapUploader, @unchecked Sendable {
     private let lock = NSLock()
     private var scriptedResults: [Result<Void, Error>]
     private var batches: [Data] = []
@@ -14,9 +13,7 @@ final class FakeUploader: HeatmapUploader {
         self.scriptedResults = results
     }
 
-    /// 전송된 배치 수(스레드 안전).
     var uploadCount: Int { lock.lock(); defer { lock.unlock() }; return batches.count }
-    var uploadedBatches: [Data] { lock.lock(); defer { lock.unlock() }; return batches }
 
     func upload(batch: Data, completion: @escaping (Result<Void, Error>) -> Void) {
         lock.lock()
@@ -26,6 +23,22 @@ final class FakeUploader: HeatmapUploader {
         lock.unlock()
         completion(result)
     }
+}
+
+/// 인메모리 이벤트 버퍼(파일 I/O 없이 파이프라인 테스트). POP 덕분에 교체 가능.
+final class FakeBuffer: EventBuffering, @unchecked Sendable {
+    private let lock = NSLock()
+    private var events: [HeatmapEvent] = []
+
+    func append(_ event: HeatmapEvent) { lock.lock(); events.append(event); lock.unlock() }
+    func count() -> Int { lock.lock(); defer { lock.unlock() }; return events.count }
+    func loadSpan(max: Int) -> (events: [HeatmapEvent], lineCount: Int) {
+        lock.lock(); defer { lock.unlock() }
+        let span = Array(events.prefix(max))
+        return (span, span.count)
+    }
+    func removeFirst(_ n: Int) { lock.lock(); events.removeFirst(Swift.min(n, events.count)); lock.unlock() }
+    func clear() { lock.lock(); events.removeAll(); lock.unlock() }
 }
 
 enum TestFiles {
@@ -45,13 +58,22 @@ extension HeatmapEvent {
     }
 }
 
-extension XCTestCase {
-    /// 조건이 참이 될 때까지(또는 타임아웃까지) 런루프를 돌리며 대기.
-    /// 비동기 드레인 완료처럼 sync 배리어로 못 잡는 상태를 기다릴 때 사용.
-    func waitUntil(timeout: TimeInterval = 2, _ condition: () -> Bool) {
-        let deadline = Date().addingTimeInterval(timeout)
-        while !condition() && Date() < deadline {
-            RunLoop.current.run(until: Date().addingTimeInterval(0.005))
-        }
+/// 조건이 참이 될 때까지(또는 타임아웃까지) 폴링 대기(비동기 드레인 대기용).
+func waitUntil(timeout: TimeInterval = 2, _ condition: @escaping () -> Bool) async {
+    let deadline = Date().addingTimeInterval(timeout)
+    while !condition() && Date() < deadline {
+        try? await Task.sleep(nanoseconds: 5_000_000) // 5ms
     }
+}
+
+/// 콜백 기반 flush를 async로 감싸 결과를 반환.
+func awaitFlush(_ pipeline: EventPipeline) async -> Result<Void, HeatmapError> {
+    await withCheckedContinuation { cont in
+        pipeline.flush { cont.resume(returning: $0) }
+    }
+}
+
+extension Result {
+    var isSuccess: Bool { if case .success = self { return true }; return false }
+    var isFailure: Bool { !isSuccess }
 }

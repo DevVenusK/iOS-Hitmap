@@ -1,42 +1,46 @@
-import XCTest
+import Testing
 @testable import HeatmapCore
 
-final class NormalizationTests: XCTestCase {
+@Suite struct NormalizationTests {
 
-    func test_normalize_center_of_view() throws {
-        let r = try XCTUnwrap(Normalization.normalize(px: 195, py: 422, width: 390, height: 844))
-        XCTAssertEqual(r.x, 0.5, accuracy: 0.0001)
-        XCTAssertEqual(r.y, 0.5, accuracy: 0.0001)
+    @Test func centerNormalizesToHalf() throws {
+        let r = try #require(Normalization.normalize(px: 195, py: 422, width: 390, height: 844))
+        #expect(abs(r.x - 0.5) < 1e-9)
+        #expect(abs(r.y - 0.5) < 1e-9)
     }
 
-    func test_normalize_is_device_independent() throws {
-        // 같은 "화면 정중앙 탭"은 기기 크기가 달라도 (0.5, 0.5)로 수렴해야 한다.
-        let se = try XCTUnwrap(Normalization.normalize(px: 160, py: 284, width: 320, height: 568))
-        let proMax = try XCTUnwrap(Normalization.normalize(px: 215, py: 465, width: 430, height: 930))
-        XCTAssertEqual(se.x, proMax.x, accuracy: 0.0001)
-        XCTAssertEqual(se.y, proMax.y, accuracy: 0.0001)
+    @Test func sameScreenPointIsDeviceIndependent() throws {
+        // 화면 정중앙은 기기 크기가 달라도 (0.5, 0.5)로 수렴해야 한다.
+        let se = try #require(Normalization.normalize(px: 160, py: 284, width: 320, height: 568))
+        let proMax = try #require(Normalization.normalize(px: 215, py: 465, width: 430, height: 930))
+        #expect(abs(se.x - proMax.x) < 1e-9)
+        #expect(abs(se.y - proMax.y) < 1e-9)
     }
 
-    func test_normalize_clamps_out_of_bounds() throws {
-        let r = try XCTUnwrap(Normalization.normalize(px: -50, py: 9999, width: 390, height: 844))
-        XCTAssertEqual(r.x, 0.0)
-        XCTAssertEqual(r.y, 1.0)
+    @Test func clampsOutOfBounds() throws {
+        let r = try #require(Normalization.normalize(px: -50, py: 9999, width: 390, height: 844))
+        #expect(r.x == 0)
+        #expect(r.y == 1)
     }
 
-    func test_normalize_invalid_bounds_returns_nil() {
-        XCTAssertNil(Normalization.normalize(px: 10, py: 10, width: 0, height: 844))
-        XCTAssertNil(Normalization.normalize(px: 10, py: 10, width: 390, height: -1))
+    @Test(arguments: [(0.0, 844.0), (390.0, 0.0), (-1.0, 10.0)])
+    func invalidBoundsReturnNil(_ dim: (Double, Double)) {
+        #expect(Normalization.normalize(px: 10, py: 10, width: dim.0, height: dim.1) == nil)
     }
 
-    func test_scrollDepth_basic() {
-        // contentHeight 2000, viewport 800 → scrollable 1200. offset 600 → 0.5
-        XCTAssertEqual(Normalization.scrollDepth(offsetY: 600, contentHeight: 2000, viewportHeight: 800), 0.5, accuracy: 0.0001)
+    struct ScrollCase: Sendable {
+        let offset, content, viewport, expected: Double
     }
 
-    func test_scrollDepth_clamps_and_handles_nonscrollable() {
-        XCTAssertEqual(Normalization.scrollDepth(offsetY: 5000, contentHeight: 2000, viewportHeight: 800), 1.0)
-        XCTAssertEqual(Normalization.scrollDepth(offsetY: -100, contentHeight: 2000, viewportHeight: 800), 0.0)
-        // 콘텐츠가 뷰포트보다 작으면 스크롤 불가 → 0
-        XCTAssertEqual(Normalization.scrollDepth(offsetY: 10, contentHeight: 500, viewportHeight: 800), 0.0)
+    @Test(arguments: [
+        ScrollCase(offset: 600, content: 2000, viewport: 800, expected: 0.5),
+        ScrollCase(offset: 5000, content: 2000, viewport: 800, expected: 1.0),   // 넘침 → 1
+        ScrollCase(offset: -100, content: 2000, viewport: 800, expected: 0.0),   // 음수 → 0
+        ScrollCase(offset: 10, content: 500, viewport: 800, expected: 0.0),      // 스크롤 불가 → 0
+    ])
+    func scrollDepth(_ c: ScrollCase) {
+        let depth = Normalization.scrollDepth(
+            offsetY: c.offset, contentHeight: c.content, viewportHeight: c.viewport)
+        #expect(abs(depth - c.expected) < 1e-9)
     }
 }

@@ -1,25 +1,23 @@
-import XCTest
+import Testing
+import Foundation
 @testable import HeatmapKit
 @testable import HeatmapCore
 
-final class EventPipelineTests: XCTestCase {
+@Suite struct EventPipelineTests {
 
     /// 기본은 `.batched`(대용량)로 두어 이벤트가 버퍼에 남아 게이팅을 관측할 수 있게 한다.
-    /// (전송을 검증하는 테스트는 전략/uploader를 명시적으로 설정한다.)
     private func makePipeline(
         configure: (inout HeatmapConfig) -> Void = { _ in },
         uploader: HeatmapUploader = FakeUploader(),
+        buffer: FakeBuffer = FakeBuffer(),
         sampler: @escaping () -> Double = { 0.0 }
-    ) -> (EventPipeline, EventStore) {
+    ) -> (EventPipeline, FakeBuffer) {
         var config = HeatmapConfig(endpoint: URL(string: "https://example.com")!)
         config.uploadStrategy = .batched(maxSize: 1_000_000, interval: 3600)
         configure(&config)
-        let store = EventStore(fileURL: TestFiles.tempEventFile())
         let pipeline = EventPipeline(
-            config: config, store: store, uploader: uploader,
-            sampler: sampler, now: { 42 }
-        )
-        return (pipeline, store)
+            config: config, store: buffer, uploader: uploader, sampler: sampler, now: { 42 })
+        return (pipeline, buffer)
     }
 
     private func record(_ pipeline: EventPipeline, times: Int = 1) {
@@ -31,165 +29,134 @@ final class EventPipelineTests: XCTestCase {
 
     // MARK: - 릴리즈 게이트: 동의 OFF ⇒ 0건
 
-    func test_consentOff_recordsZeroEvents() {
-        let (pipeline, store) = makePipeline()
-        pipeline.start()
-        pipeline.setScreen("home")
-        record(pipeline, times: 50)   // 동의를 켜지 않음 (기본 OFF)
+    @Test func consentOffCollectsZero() {
+        let (pipeline, buffer) = makePipeline()
+        pipeline.start(); pipeline.setScreen("home")   // 동의 안 함(기본 OFF)
+        record(pipeline, times: 50)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 0, "동의 OFF 상태에서는 단 한 건도 수집되면 안 된다")
+        #expect(buffer.count() == 0)
     }
 
-    func test_consentOn_recordsEvents() {
-        let (pipeline, store) = makePipeline()
+    @Test func consentOnCollects() {
+        let (pipeline, buffer) = makePipeline()
         pipeline.start(); pipeline.setConsent(true); pipeline.setScreen("home")
         record(pipeline)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 1)
+        #expect(buffer.count() == 1)
     }
 
-    func test_notRunning_recordsZero() {
-        let (pipeline, store) = makePipeline()
-        pipeline.setConsent(true); pipeline.setScreen("home")   // start() 안 함
+    @Test func notRunningCollectsZero() {
+        let (pipeline, buffer) = makePipeline()
+        pipeline.setConsent(true); pipeline.setScreen("home")   // start 안 함
         record(pipeline)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 0)
+        #expect(buffer.count() == 0)
     }
 
-    func test_noScreenSet_recordsZero() {
-        let (pipeline, store) = makePipeline()
-        pipeline.start(); pipeline.setConsent(true)             // setScreen 안 함
+    @Test func noScreenCollectsZero() {
+        let (pipeline, buffer) = makePipeline()
+        pipeline.start(); pipeline.setConsent(true)   // setScreen 안 함
         record(pipeline)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 0)
+        #expect(buffer.count() == 0)
     }
 
-    // MARK: - 민감화면 제외
-
-    func test_excludedScreen_isBlocked() {
-        let (pipeline, store) = makePipeline { $0.excludedScreens = ["login"] }
+    @Test func excludedScreenIsBlocked() {
+        let (pipeline, buffer) = makePipeline { $0.excludedScreens = ["login"] }
         pipeline.start(); pipeline.setConsent(true)
         pipeline.setScreen("login"); record(pipeline)
         pipeline.setScreen("home");  record(pipeline)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 1, "제외화면(login)은 빠지고 home만 수집")
+        #expect(buffer.count() == 1)   // login 제외, home만
     }
 
-    // MARK: - 샘플링
-
-    func test_samplingZero_recordsZero() {
-        let (pipeline, store) = makePipeline(
-            configure: { $0.samplingRate = 0.0 },
-            sampler: { 0.5 }   // 0.5 < 0.0 → false → 차단
-        )
+    @Test func samplingZeroCollectsZero() {
+        let (pipeline, buffer) = makePipeline(
+            configure: { $0.samplingRate = 0.0 }, sampler: { 0.5 })
         pipeline.start(); pipeline.setConsent(true); pipeline.setScreen("home")
         record(pipeline, times: 20)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 0)
+        #expect(buffer.count() == 0)
     }
 
-    // MARK: - 즉시 전송 (.immediate) — 로컬에 쌓지 않고 서버로
+    // MARK: - 즉시 전송(.immediate): 로컬에 안 쌓고 서버로
 
-    func test_immediate_uploadsAndClearsLocal_onSuccess() {
+    @Test func immediateUploadsAndClearsLocalOnSuccess() async {
         let uploader = FakeUploader(results: [.success(())])
-        let (pipeline, store) = makePipeline(
-            configure: { $0.uploadStrategy = .immediate },
-            uploader: uploader
-        )
+        let (pipeline, buffer) = makePipeline(
+            configure: { $0.uploadStrategy = .immediate }, uploader: uploader)
         pipeline.start(); pipeline.setConsent(true); pipeline.setScreen("home")
         record(pipeline, times: 3)
-        waitUntil { uploader.uploadCount > 0 && store.count() == 0 }  // 전송+드레인 완료 대기
-        XCTAssertEqual(store.count(), 0, "즉시 전송 성공 시 로컬 버퍼는 비워져야 한다")
-        XCTAssertGreaterThan(uploader.uploadCount, 0, "서버로 전송되어야 한다")
+        await waitUntil { uploader.uploadCount > 0 && buffer.count() == 0 }
+        #expect(buffer.count() == 0)
+        #expect(uploader.uploadCount > 0)
     }
 
-    func test_immediate_keepsLocal_onFailure_forRetry() {
+    @Test func immediateKeepsLocalOnFailure() {
         let uploader = FakeUploader(results: [.failure(NSError(domain: "net", code: -1))])
-        let (pipeline, store) = makePipeline(
-            configure: { $0.uploadStrategy = .immediate },
-            uploader: uploader
-        )
+        let (pipeline, buffer) = makePipeline(
+            configure: { $0.uploadStrategy = .immediate }, uploader: uploader)
         pipeline.start(); pipeline.setConsent(true); pipeline.setScreen("home")
         record(pipeline)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 1, "전송 실패 시에만 로컬 보존(재시도 대상)")
+        #expect(buffer.count() == 1)   // 실패 시 보존
     }
 
-    // MARK: - 수동 flush (.batched 누적 후)
+    // MARK: - 수동 flush(.batched 누적 후)
 
-    func test_flush_success_removesBatch() {
+    @Test func flushSuccessRemovesBatch() async {
         let uploader = FakeUploader(results: [.success(())])
-        let (pipeline, store) = makePipeline(uploader: uploader)   // batched 대용량 → 누적
+        let (pipeline, buffer) = makePipeline(uploader: uploader)
         pipeline.start(); pipeline.setConsent(true); pipeline.setScreen("home")
         record(pipeline, times: 3)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 3)
+        #expect(buffer.count() == 3)
 
-        let exp = expectation(description: "flush")
-        pipeline.flush { result in
-            if case .failure = result { XCTFail("성공해야 함") }
-            exp.fulfill()
-        }
-        wait(for: [exp], timeout: 2)
+        let result = await awaitFlush(pipeline)
+        #expect(result.isSuccess)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 0, "전송 성공분은 로컬에서 제거")
+        #expect(buffer.count() == 0)
     }
 
-    func test_flush_failure_preservesBatch() {
+    @Test func flushFailurePreservesBatch() async {
         let uploader = FakeUploader(results: [.failure(NSError(domain: "net", code: -1))])
-        let (pipeline, store) = makePipeline(uploader: uploader)
+        let (pipeline, buffer) = makePipeline(uploader: uploader)
         pipeline.start(); pipeline.setConsent(true); pipeline.setScreen("home")
         record(pipeline, times: 3)
         pipeline._syncForTesting()
 
-        let exp = expectation(description: "flush")
-        pipeline.flush { result in
-            if case .success = result { XCTFail("실패해야 함") }
-            exp.fulfill()
-        }
-        wait(for: [exp], timeout: 2)
+        let result = await awaitFlush(pipeline)
+        #expect(result.isFailure)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 3, "전송 실패 시 로컬 보존(재시도 대상)")
+        #expect(buffer.count() == 3)
     }
 
-    // MARK: - H2: 동의 철회 시 업로드 중단 + purge
+    // MARK: - 동의 철회 + purge
 
-    func test_consentRevoke_stopsUpload() {
+    @Test func consentRevokeStopsUpload() async {
         let uploader = FakeUploader(results: [.success(())])
-        let (pipeline, store) = makePipeline(uploader: uploader)   // batched → 누적
+        let (pipeline, buffer) = makePipeline(uploader: uploader)
         pipeline.start(); pipeline.setConsent(true); pipeline.setScreen("home")
         record(pipeline, times: 3)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 3)
+        #expect(buffer.count() == 3)
 
-        pipeline.setConsent(false)                                 // 철회
-        let exp = expectation(description: "flush")
-        pipeline.flush { _ in exp.fulfill() }
-        wait(for: [exp], timeout: 2)
+        pipeline.setConsent(false)
+        _ = await awaitFlush(pipeline)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 3, "철회 후 미전송분도 업로드되지 않아야 한다")
-        XCTAssertEqual(uploader.uploadCount, 0, "전송 시도 자체가 없어야 한다")
+        #expect(buffer.count() == 3)          // 철회 후 미전송분도 안 나감
+        #expect(uploader.uploadCount == 0)
     }
 
-    func test_purgePending_clearsBuffer() {
-        let (pipeline, store) = makePipeline()
+    @Test func purgeClearsBuffer() {
+        let (pipeline, buffer) = makePipeline()
         pipeline.start(); pipeline.setConsent(true); pipeline.setScreen("home")
         record(pipeline, times: 3)
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 3)
+        #expect(buffer.count() == 3)
 
         pipeline.purgePending()
         pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 0, "purge는 미전송 버퍼를 하드 삭제")
-    }
-
-    // MARK: - L1: 잘못된 samplingRate가 전량 드롭을 유발하지 않음
-
-    func test_samplingRate_nan_doesNotDropAll() {
-        let (pipeline, store) = makePipeline { $0.samplingRate = Double.nan }
-        pipeline.start(); pipeline.setConsent(true); pipeline.setScreen("home")
-        record(pipeline, times: 5)
-        pipeline._syncForTesting()
-        XCTAssertEqual(store.count(), 5, "NaN samplingRate는 안전하게 전량 통과 처리")
+        #expect(buffer.count() == 0)
     }
 }

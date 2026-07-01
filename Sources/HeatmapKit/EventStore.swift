@@ -6,7 +6,7 @@ import HeatmapCore
 /// 각 이벤트를 한 줄(JSON + `\n`)로 append하고, 배치 로드/삭제를 지원한다.
 /// 전송 실패 시 삭제하지 않으므로 다음 전송에서 재시도된다(실패 로컬 보존).
 /// `count()`는 매 이벤트마다 호출될 수 있어 **캐시로 O(1)** 유지(파일 재파싱 금지).
-final class EventStore {
+final class EventStore: EventBuffering {
 
     private let queue = DispatchQueue(label: "co.finda.heatmap.store")
     private let fileURL: URL

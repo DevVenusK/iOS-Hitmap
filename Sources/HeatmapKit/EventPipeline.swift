@@ -16,7 +16,7 @@ final class EventPipeline {
     static let uploadChunkSize = 500
 
     private let queue = DispatchQueue(label: "co.finda.heatmap.pipeline")
-    private let store: EventStore
+    private let store: EventBuffering
     private let uploader: HeatmapUploader
     private let config: HeatmapConfig
     private let sampler: () -> Double
@@ -29,7 +29,7 @@ final class EventPipeline {
 
     init(
         config: HeatmapConfig,
-        store: EventStore,
+        store: EventBuffering,
         uploader: HeatmapUploader,
         sampler: @escaping () -> Double = { Double.random(in: 0..<1) },
         now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }
@@ -87,14 +87,13 @@ final class EventPipeline {
         }
     }
 
-    /// 수집 게이트. (큐 내부에서만 호출)
+    /// 수집 게이트 — 순수 판정 로직에 위임. (큐 내부에서만 호출)
     private func passesGate(screen: String) -> Bool {
-        guard running, consent else { return false }               // 미실행/미동의 → 차단
-        guard !config.excludedScreens.contains(screen) else { return false } // 민감화면 제외
-        // samplingRate가 NaN/음수/>1이어도 안전하게 처리(전량 드롭 방지).
-        let rate = config.samplingRate.isFinite ? min(1, max(0, config.samplingRate)) : 1.0
-        guard rate >= 1.0 || sampler() < rate else { return false }
-        return true
+        CollectionGate.allows(
+            running: running, consent: consent, screen: screen,
+            excludedScreens: config.excludedScreens,
+            samplingRate: config.samplingRate, roll: sampler()
+        )
     }
 
     // MARK: - Upload
@@ -116,45 +115,54 @@ final class EventPipeline {
 
     /// 한 청크 전송 → 성공 시 로컬 제거 후 남은 게 있으면 계속 드레인. (큐 내부)
     private func startUpload(completion: ((Result<Void, HeatmapError>) -> Void)?) {
-        guard consent else { completion?(.success(())); return }     // 동의 철회 시 전송 중단
-        guard !uploading else { completion?(.success(())); return }  // 코얼레싱
+        guard consent, !uploading else { completion?(.success(())); return } // 철회/코얼레싱
 
         let (chunk, lineCount) = store.loadSpan(max: Self.uploadChunkSize)
         guard lineCount > 0 else { completion?(.success(())); return }
 
-        // 스팬 전체가 손상 라인이면(디코딩 0) 정리하고 다음으로.
-        guard !chunk.isEmpty else {
-            store.removeFirst(lineCount)
-            completion?(.success(()))
-            if store.count() > 0 { startUpload(completion: nil) }
+        if chunk.isEmpty {                       // 스팬 전체가 손상 라인 → 정리 후 다음으로
+            purge(lineCount, then: completion)
             return
         }
 
-        let data: Data
-        do {
-            data = try JSONEncoder().encode(chunk)
-        } catch {
-            completion?(.failure(HeatmapError.encodingFailed(error)))
-            return
-        }
-
-        uploading = true
-        uploader.upload(batch: data) { result in
-            self.queue.async {
-                self.uploading = false
-                switch result {
-                case .success:
-                    self.store.removeFirst(lineCount)     // 전송한 라인 수만큼 정확히 제거
-                    completion?(.success(()))
-                    if self.consent, self.store.count() > 0 {  // 남은 게 있으면 계속 전송
-                        self.startUpload(completion: nil)
-                    }
-                case .failure(let error):
-                    // 실패 시 로컬 보존(제거하지 않음) → 다음 트리거/스윕에서 재시도
-                    completion?(.failure(HeatmapError.uploadFailed(error)))
-                }
+        switch encodeBatch(chunk) {
+        case .failure(let error):
+            completion?(.failure(error))
+        case .success(let data):
+            uploading = true
+            uploader.upload(batch: data) { [weak self] result in
+                self?.queue.async { self?.finishUpload(result, lineCount: lineCount, completion: completion) }
             }
         }
+    }
+
+    /// 손상 라인 정리 후 남은 게 있으면 드레인. (큐 내부)
+    private func purge(_ lineCount: Int, then completion: ((Result<Void, HeatmapError>) -> Void)?) {
+        store.removeFirst(lineCount)
+        completion?(.success(()))
+        if store.count() > 0 { startUpload(completion: nil) }
+    }
+
+    /// 전송 결과 처리: 성공 시 정확히 라인 수만큼 제거 후 드레인, 실패 시 로컬 보존. (큐 내부)
+    private func finishUpload(
+        _ result: Result<Void, Error>, lineCount: Int,
+        completion: ((Result<Void, HeatmapError>) -> Void)?
+    ) {
+        uploading = false
+        switch result {
+        case .success:
+            store.removeFirst(lineCount)
+            completion?(.success(()))
+            if consent, store.count() > 0 { startUpload(completion: nil) }
+        case .failure(let error):
+            completion?(.failure(HeatmapError.uploadFailed(error)))
+        }
+    }
+
+    /// 이벤트 배치를 JSON으로 인코딩(순수).
+    private func encodeBatch(_ events: [HeatmapEvent]) -> Result<Data, HeatmapError> {
+        Result { try JSONEncoder().encode(events) }
+            .mapError { HeatmapError.encodingFailed($0) }
     }
 
     // MARK: - Testing hook
