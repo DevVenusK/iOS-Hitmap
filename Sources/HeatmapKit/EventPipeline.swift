@@ -6,9 +6,8 @@ import HeatmapCore
 /// 게이팅(실행/동의/제외화면/샘플링) → 임시 버퍼 저장 → 서버 전송을 담당한다.
 /// UIKit 글루(`HeatmapCollector`)가 좌표를 정규화해 `recordTap`/`recordScroll`을 호출한다.
 ///
-/// 전송 정책은 `HeatmapUploadStrategy`가 결정한다. `.immediate`는 이벤트 발생 즉시 전송하되
-/// 전송 중 들어온 이벤트를 코얼레싱해 드레인한다. 로컬 저장은 실패/오프라인 대비 임시 버퍼일 뿐,
-/// 전송 성공 시 즉시 비워진다(서버가 원본).
+/// 전송 정책은 `HeatmapUploadStrategy`가 결정한다. 로컬 저장은 실패/오프라인 대비 임시 버퍼일 뿐,
+/// 전송 성공 시 즉시 비워진다(서버가 원본). **동의가 꺼지면 신규 수집과 전송 모두 중단된다.**
 ///
 /// 스레드 안전: 모든 상태 변경/판정/전송 트리거는 전용 직렬 큐에서 직렬화된다.
 final class EventPipeline {
@@ -51,6 +50,9 @@ final class EventPipeline {
     func setScreen(_ name: String) { queue.async { self.currentScreen = name } }
     func clearScreen() { queue.async { self.currentScreen = nil } }
 
+    /// 저장된 미전송 이벤트를 하드 삭제(동의 철회 등).
+    func purgePending() { queue.async { self.store.clear() } }
+
     // MARK: - Recording
 
     func recordTap(
@@ -89,7 +91,9 @@ final class EventPipeline {
     private func passesGate(screen: String) -> Bool {
         guard running, consent else { return false }               // 미실행/미동의 → 차단
         guard !config.excludedScreens.contains(screen) else { return false } // 민감화면 제외
-        guard config.samplingRate >= 1.0 || sampler() < config.samplingRate else { return false }
+        // samplingRate가 NaN/음수/>1이어도 안전하게 처리(전량 드롭 방지).
+        let rate = config.samplingRate.isFinite ? min(1, max(0, config.samplingRate)) : 1.0
+        guard rate >= 1.0 || sampler() < rate else { return false }
         return true
     }
 
@@ -112,9 +116,19 @@ final class EventPipeline {
 
     /// 한 청크 전송 → 성공 시 로컬 제거 후 남은 게 있으면 계속 드레인. (큐 내부)
     private func startUpload(completion: ((Result<Void, HeatmapError>) -> Void)?) {
+        guard consent else { completion?(.success(())); return }     // 동의 철회 시 전송 중단
         guard !uploading else { completion?(.success(())); return }  // 코얼레싱
-        let chunk = store.loadBatch(max: Self.uploadChunkSize)
-        guard !chunk.isEmpty else { completion?(.success(())); return }
+
+        let (chunk, lineCount) = store.loadSpan(max: Self.uploadChunkSize)
+        guard lineCount > 0 else { completion?(.success(())); return }
+
+        // 스팬 전체가 손상 라인이면(디코딩 0) 정리하고 다음으로.
+        guard !chunk.isEmpty else {
+            store.removeFirst(lineCount)
+            completion?(.success(()))
+            if store.count() > 0 { startUpload(completion: nil) }
+            return
+        }
 
         let data: Data
         do {
@@ -125,15 +139,14 @@ final class EventPipeline {
         }
 
         uploading = true
-        let count = chunk.count
         uploader.upload(batch: data) { result in
             self.queue.async {
                 self.uploading = false
                 switch result {
                 case .success:
-                    self.store.removeFirst(count)         // 성공분만 서버로 갔으니 로컬 제거
+                    self.store.removeFirst(lineCount)     // 전송한 라인 수만큼 정확히 제거
                     completion?(.success(()))
-                    if self.store.count() > 0 {           // 남은 게 있으면 계속 전송
+                    if self.consent, self.store.count() > 0 {  // 남은 게 있으면 계속 전송
                         self.startUpload(completion: nil)
                     }
                 case .failure(let error):

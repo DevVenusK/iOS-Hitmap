@@ -13,7 +13,8 @@ public final class TrackingWindow: UIWindow {
         if event.type == .touches, let touches = event.allTouches {
             for touch in touches where touch.phase == .began {
                 let point = touch.location(in: self)
-                HeatmapCollector.shared.handleTap(at: point, in: self)
+                // touch.view는 UIKit이 이미 히트테스트한 결과 → 재히트테스트 회피(핫패스 절감).
+                HeatmapCollector.shared.handleTap(at: point, in: self, hitView: touch.view)
             }
         }
         super.sendEvent(event) // 원래 동작 보존

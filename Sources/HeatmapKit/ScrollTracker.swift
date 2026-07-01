@@ -6,6 +6,9 @@ import HeatmapCore
 ///
 /// 스위즐 없이 **명시 등록**만 추적한다. 스크롤뷰는 weak로 보관해 dealloc 시 자동 해제된다.
 /// 오프셋이 바뀐 경우에만 이벤트를 방출해 노이즈를 줄인다.
+///
+/// 스레드 안전: `tracked`/displayLink 접근은 모두 **메인 스레드로 confine**된다.
+/// 백그라운드 진입 시 displayLink를 일시정지해 배터리를 아낀다.
 final class ScrollTracker {
 
     private struct Tracked {
@@ -21,24 +24,48 @@ final class ScrollTracker {
     init(pipeline: EventPipeline, hz: Int) {
         self.pipeline = pipeline
         self.hz = max(1, hz)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(pause),
+            name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(resume),
+            name: UIApplication.willEnterForegroundNotification, object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+        displayLink?.invalidate()
     }
 
     func track(_ scrollView: UIScrollView) {
-        guard !tracked.contains(where: { $0.view === scrollView }) else { return }
-        tracked.append(Tracked(view: scrollView, lastOffsetY: scrollView.contentOffset.y))
-        startIfNeeded()
+        runOnMain {
+            guard !self.tracked.contains(where: { $0.view === scrollView }) else { return }
+            self.tracked.append(Tracked(view: scrollView, lastOffsetY: scrollView.contentOffset.y))
+            self.startIfNeeded()
+        }
     }
 
     func untrack(_ scrollView: UIScrollView) {
-        tracked.removeAll { $0.view === scrollView || $0.view == nil }
-        stopIfEmpty()
+        runOnMain {
+            self.tracked.removeAll { $0.view === scrollView || $0.view == nil }
+            self.stopIfEmpty()
+        }
     }
 
     func stop() {
-        displayLink?.invalidate()
-        displayLink = nil
-        tracked.removeAll()
+        runOnMain {
+            self.displayLink?.invalidate()
+            self.displayLink = nil
+            self.tracked.removeAll()
+        }
     }
+
+    // MARK: - Background handling
+
+    @objc private func pause() { runOnMain { self.displayLink?.isPaused = true } }
+    @objc private func resume() { runOnMain { if !self.tracked.isEmpty { self.displayLink?.isPaused = false } } }
+
+    // MARK: - Sampling (all on main)
 
     private func startIfNeeded() {
         guard displayLink == nil else { return }
@@ -72,10 +99,13 @@ final class ScrollTracker {
     }
 
     private func emit(for view: UIScrollView, offsetY: CGFloat) {
+        // adjustedContentInset을 반영한 실제 스크롤 가능 영역 기준으로 깊이 계산.
+        let inset = view.adjustedContentInset
+        let viewport = max(0, view.bounds.height - inset.top - inset.bottom)
         let depth = Normalization.scrollDepth(
-            offsetY: Double(offsetY),
+            offsetY: Double(offsetY + inset.top),
             contentHeight: Double(view.contentSize.height),
-            viewportHeight: Double(view.bounds.height)
+            viewportHeight: Double(viewport)
         )
         let refSize = view.window?.bounds.size ?? view.bounds.size
         let orientation = DeviceInfo.orientation(
@@ -85,6 +115,10 @@ final class ScrollTracker {
             screenW: Double(refSize.width), screenH: Double(refSize.height),
             device: DeviceInfo.modelIdentifier, orientation: orientation
         )
+    }
+
+    private func runOnMain(_ block: @escaping () -> Void) {
+        if Thread.isMainThread { block() } else { DispatchQueue.main.async(execute: block) }
     }
 }
 #endif

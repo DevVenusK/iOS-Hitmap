@@ -151,4 +151,45 @@ final class EventPipelineTests: XCTestCase {
         pipeline._syncForTesting()
         XCTAssertEqual(store.count(), 3, "전송 실패 시 로컬 보존(재시도 대상)")
     }
+
+    // MARK: - H2: 동의 철회 시 업로드 중단 + purge
+
+    func test_consentRevoke_stopsUpload() {
+        let uploader = FakeUploader(results: [.success(())])
+        let (pipeline, store) = makePipeline(uploader: uploader)   // batched → 누적
+        pipeline.start(); pipeline.setConsent(true); pipeline.setScreen("home")
+        record(pipeline, times: 3)
+        pipeline._syncForTesting()
+        XCTAssertEqual(store.count(), 3)
+
+        pipeline.setConsent(false)                                 // 철회
+        let exp = expectation(description: "flush")
+        pipeline.flush { _ in exp.fulfill() }
+        wait(for: [exp], timeout: 2)
+        pipeline._syncForTesting()
+        XCTAssertEqual(store.count(), 3, "철회 후 미전송분도 업로드되지 않아야 한다")
+        XCTAssertEqual(uploader.uploadCount, 0, "전송 시도 자체가 없어야 한다")
+    }
+
+    func test_purgePending_clearsBuffer() {
+        let (pipeline, store) = makePipeline()
+        pipeline.start(); pipeline.setConsent(true); pipeline.setScreen("home")
+        record(pipeline, times: 3)
+        pipeline._syncForTesting()
+        XCTAssertEqual(store.count(), 3)
+
+        pipeline.purgePending()
+        pipeline._syncForTesting()
+        XCTAssertEqual(store.count(), 0, "purge는 미전송 버퍼를 하드 삭제")
+    }
+
+    // MARK: - L1: 잘못된 samplingRate가 전량 드롭을 유발하지 않음
+
+    func test_samplingRate_nan_doesNotDropAll() {
+        let (pipeline, store) = makePipeline { $0.samplingRate = Double.nan }
+        pipeline.start(); pipeline.setConsent(true); pipeline.setScreen("home")
+        record(pipeline, times: 5)
+        pipeline._syncForTesting()
+        XCTAssertEqual(store.count(), 5, "NaN samplingRate는 안전하게 전량 통과 처리")
+    }
 }

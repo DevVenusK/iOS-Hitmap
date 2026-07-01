@@ -47,7 +47,11 @@ final class DefaultHTTPUploader: HeatmapUploader {
         request.httpBody = data
 
         session.dataTask(with: request) { [weak self] _, response, error in
-            guard let self = self else { return }
+            // self가 사라져도 completion은 반드시 호출한다(호출자의 uploading 플래그 스턱 방지).
+            guard let self = self else {
+                completion(.failure(HeatmapError.uploadFailed(error)))
+                return
+            }
             if Self.isSuccess(response) {
                 completion(.success(()))
             } else if attempt < self.maxRetries {

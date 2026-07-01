@@ -108,12 +108,12 @@ Hitmap_Project/
 
 ```json
 // 탭
-{ "schemaVersion": 1, "type": "tap", "screen": "loan_detail",
+{ "schemaVersion": 1, "id": "9F2A…", "type": "tap", "screen": "loan_detail",
   "x": 0.42, "y": 0.73, "screenW": 390, "screenH": 844,
   "device": "iPhone15,3", "orientation": "portrait", "ts": 1719800000000 }
 
 // 스크롤
-{ "schemaVersion": 1, "type": "scroll", "screen": "loan_detail",
+{ "schemaVersion": 1, "id": "1C7B…", "type": "scroll", "screen": "loan_detail",
   "scrollDepth": 0.65, "scrollOffsetY": 1240,
   "screenW": 390, "screenH": 844,
   "device": "iPhone15,3", "orientation": "portrait", "ts": 1719800000000 }
@@ -121,6 +121,7 @@ Hitmap_Project/
 
 | 필드 | 의미 |
 |---|---|
+| `id` | 이벤트 UUID — ACK 유실/재시도 시 **서버 측 멱등 dedup**용 |
 | `type` | `tap` \| `scroll` |
 | `screen` | 화면 이름(문자열). 매핑은 수집 측이 나중에. **PII 금지** |
 | `x`,`y` | 탭 정규화 좌표 0~1 (뷰 bounds 기준) |
@@ -203,12 +204,22 @@ config.uploader = MyUploader()
 
 ## 🔒 프라이버시
 
-- **동의 기본 OFF** — `setConsent(true)` 전엔 수집·저장 0건 (회귀테스트로 강제)
+- **동의 = 마스터 스위치, 기본 OFF** — `setConsent(true)` 전엔 수집·저장 0건 (회귀테스트로 강제).
+  법적 근거상 좌표 수집에 별도 동의가 불필요하다고 판단되면 시작 시 한 번 `setConsent(true)` 호출하면 됨(동의 UI 강제 아님).
+- **동의 철회(`setConsent(false)`)** — 신규 수집 중단 + **미전송 버퍼 업로드도 중단**(재동의 시 재개). 하드 삭제는 `purgePendingEvents()`.
 - **좌표만 수집** — 콘텐츠/입력값/요소식별자 절대 미수집
-- **민감화면 제외** — 로그인·계좌·금액 화면은 `excludedScreens`에 등록
+- **민감화면 제외** — 로그인·계좌·금액 화면은 `excludedScreens`에 등록 (정확 문자열 일치)
 - **`screen` 이름에 PII 금지** — 서버로 전송되므로 고정 심볼릭 이름 사용
 - **ATT/IDFA 추적 아님** (1st-party 분석). PrivacyManifest는 현재 required-reason API 미사용으로
   필수는 아니나, 데이터수집 신고는 호스트 앱 App Privacy 라벨로 처리 → [상세](docs/sdk-spec/heatmapkit-v1-collection.md) §6
+
+## ⚠️ 알려진 한계
+
+- **멀티 씬/윈도우(iPad multi-window)**: `HeatmapCollector.shared`는 단일 전역 상태(`currentScreen`)를 가져,
+  여러 씬이 동시에 다른 화면을 표시하면 화면 라벨이 섞일 수 있다. 단일 씬(대부분의 폰 앱)에서는 문제없음. 씬별 상태 분리는 향후 과제.
+- **로컬 버퍼 미암호화**: 임시 JSONL은 caches에 평문 저장(전송 성공 시 삭제). 민감 환경은 `storageDirectory`를
+  보호된 경로로 지정하거나 File Protection을 적용하는 것을 권장.
+- **비-TrackingWindow 호스트**: `TrackingWindow`를 설치하지 않으면 탭이 수집되지 않는다(DEBUG 빌드에서 경고 출력).
 
 ---
 

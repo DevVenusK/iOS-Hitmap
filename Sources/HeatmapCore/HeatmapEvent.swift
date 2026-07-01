@@ -25,6 +25,8 @@ public struct HeatmapEvent: Codable, Equatable, Sendable {
     public static let currentSchemaVersion = 1
 
     public let schemaVersion: Int
+    /// 이벤트 고유 ID(UUID). 전송 재시도/ACK 유실 시 **서버 측 멱등 dedup**에 사용.
+    public let id: String
     public let type: HeatmapEventType
     /// 화면 이름(매핑은 수집 측이 나중에 수행). PII를 넣지 않도록 호스트가 관리.
     public let screen: String
@@ -51,6 +53,7 @@ public struct HeatmapEvent: Codable, Equatable, Sendable {
 
     public init(
         schemaVersion: Int = HeatmapEvent.currentSchemaVersion,
+        id: String = UUID().uuidString,
         type: HeatmapEventType,
         screen: String,
         x: Double?,
@@ -64,6 +67,7 @@ public struct HeatmapEvent: Codable, Equatable, Sendable {
         ts: Int64
     ) {
         self.schemaVersion = schemaVersion
+        self.id = id
         self.type = type
         self.screen = screen
         self.x = x
@@ -75,6 +79,29 @@ public struct HeatmapEvent: Codable, Equatable, Sendable {
         self.device = device
         self.orientation = orientation
         self.ts = ts
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, id, type, screen, x, y
+        case scrollDepth, scrollOffsetY, screenW, screenH, device, orientation, ts
+    }
+
+    /// 관대한 디코딩: 예전 버퍼에 쌓인 이벤트(id/schemaVersion 없음)도 유실 없이 복원한다.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.schemaVersion = try c.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? HeatmapEvent.currentSchemaVersion
+        self.id = try c.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        self.type = try c.decode(HeatmapEventType.self, forKey: .type)
+        self.screen = try c.decode(String.self, forKey: .screen)
+        self.x = try c.decodeIfPresent(Double.self, forKey: .x)
+        self.y = try c.decodeIfPresent(Double.self, forKey: .y)
+        self.scrollDepth = try c.decodeIfPresent(Double.self, forKey: .scrollDepth)
+        self.scrollOffsetY = try c.decodeIfPresent(Double.self, forKey: .scrollOffsetY)
+        self.screenW = try c.decode(Double.self, forKey: .screenW)
+        self.screenH = try c.decode(Double.self, forKey: .screenH)
+        self.device = try c.decode(String.self, forKey: .device)
+        self.orientation = try c.decode(HeatmapOrientation.self, forKey: .orientation)
+        self.ts = try c.decode(Int64.self, forKey: .ts)
     }
 }
 

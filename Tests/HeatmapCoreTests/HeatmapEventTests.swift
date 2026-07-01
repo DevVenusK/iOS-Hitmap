@@ -47,7 +47,7 @@ final class HeatmapEventTests: XCTestCase {
         let obj = try JSONSerialization.jsonObject(
             with: JSONEncoder().encode(e)) as? [String: Any]
         let keys = Set((obj ?? [:]).keys)
-        for k in ["schemaVersion", "type", "screen", "screenW", "screenH", "device", "orientation", "ts", "scrollDepth", "scrollOffsetY"] {
+        for k in ["schemaVersion", "id", "type", "screen", "screenW", "screenH", "device", "orientation", "ts", "scrollDepth", "scrollOffsetY"] {
             XCTAssertTrue(keys.contains(k), "wire 필드 누락: \(k)")
         }
     }

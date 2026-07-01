@@ -44,4 +44,24 @@ final class EventStoreTests: XCTestCase {
         store.clear()
         XCTAssertEqual(store.count(), 0)
     }
+
+    // MARK: - H3: 손상 라인이 있어도 라인 단위 정렬로 중복/유실 없음
+
+    func test_loadSpan_countsCorruptLinesForAlignment() throws {
+        let url = TestFiles.tempEventFile()
+        let store = EventStore(fileURL: url)
+        store.append(.stubTap(screen: "good"))
+        // 앱 강제종료로 잘린 것처럼 손상 라인을 파일에 직접 추가
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data("{corrupt-partial\n".utf8))
+        try handle.close()
+
+        let span = store.loadSpan(max: 10)
+        XCTAssertEqual(span.events.count, 1, "유효 이벤트만 디코딩")
+        XCTAssertEqual(span.lineCount, 2, "손상 라인도 라인 수에는 포함(정렬 기준)")
+
+        store.removeFirst(span.lineCount)   // 라인 수 기준 제거
+        XCTAssertEqual(store.loadSpan(max: 10).lineCount, 0, "손상 라인까지 정리 → 중복/블록 없음")
+    }
 }
