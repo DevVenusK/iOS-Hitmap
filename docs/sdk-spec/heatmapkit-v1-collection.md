@@ -1,0 +1,139 @@
+# SDK Spec: HeatmapKit v1 — 수집 전용 (Collection-Only)
+
+> Status: 확정 (2026-07-01) — 사용자 스코프 재정의 반영. 이 문서가 v1의 권위 스펙이며,
+> `heatmapkit.md`의 렌더링(HeatmapViz)·elementID·dwell 관련 부분을 **대체(supersede)**한다.
+
+## 0. 한 줄 정의
+호스트 iOS 앱의 **탭·스크롤 이벤트를 정규화 좌표로 수집해 서버로 직접 전송**하는 1st-party SDK.
+**히트맵 렌더링은 범위 밖** — 수집된 데이터로 사용자가 직접 히트맵을 만든다.
+
+## 1. 스코프 변경 요약 (이전 스펙 대비)
+| 항목 | 이전(heatmapkit.md) | v1 확정 |
+|---|---|---|
+| 렌더링(HeatmapViz/CoreImage) | 포함 | **삭제** |
+| 좌표 | 정규화 + 요소앵커(elementID) | **정규화 0~1만** (elementID 삭제) |
+| 스크롤 | dwell(체류시간)+maxDepth | **깊이(offset+0~1)만** |
+| 전송 | uploader 프로토콜 주입만 | **내장 직접 전송기**(endpoint URL) |
+| 패키지 타겟 | Core/Kit/Viz 3개 | **Core/Kit 2개** (Viz 제거) |
+| elementID PII(A4)/법무 L-1~5 | 핵심 이슈 | **대부분 소멸**(elementID 미수집) |
+
+## 2. 데이터 계약 (wire format — semver 핵심)
+탭·스크롤 통일 flat 스키마. JSONL 배치 또는 JSON 배열로 전송.
+
+```json
+{
+  "schemaVersion": 1,
+  "type": "tap",            // "tap" | "scroll"
+  "screen": "loan_detail",  // 화면 이름(문자열). 매핑은 사용자가 나중에.
+  "x": 0.42,                // tap: 정규화 0~1 (VC 루트 뷰 bounds 기준). scroll: 생략/null
+  "y": 0.73,                // tap: 정규화 0~1. scroll: 생략/null
+  "scrollDepth": null,      // scroll: 정규화 깊이 0~1. tap: 생략/null
+  "scrollOffsetY": null,    // scroll: 원본 contentOffset.y(참고). tap: 생략/null
+  "screenW": 390,           // 정규화 기준 화면 폭(pt)
+  "screenH": 844,           // 정규화 기준 화면 높이(pt)
+  "device": "iPhone15,3",   // 기기 식별자(machine)
+  "orientation": "portrait",// "portrait" | "landscape"
+  "ts": 1719800000000       // epoch milliseconds
+}
+```
+
+- **정규화 기준**: 탭은 hit된 VC 루트 뷰 bounds 기준 0~1. `screenW/H`는 그 bounds 크기.
+- **스크롤 깊이**: `scrollDepth = contentOffset.y / max(1, contentSize.height - bounds.height)`, 0~1 clamp.
+- **forward-compat**: 필드 *추가*는 옵셔널이면 non-breaking(schemaVersion 유지). 의미변경/삭제만 schemaVersion++.
+
+## 3. Public API (최소 표면)
+```swift
+public final class HeatmapCollector {
+    public static let shared: HeatmapCollector
+    public func start(config: HeatmapConfig) throws
+    public func stop()
+    public var isRunning: Bool { get }
+
+    public func setConsent(_ granted: Bool)   // 기본 OFF
+    public var hasConsent: Bool { get }
+
+    public func setScreen(_ name: String)      // 현재 화면 이름 설정
+    public func clearScreen()
+
+    public func track(scrollView: UIScrollView)   // 비스위즐 명시 등록(기본)
+    public func untrack(scrollView: UIScrollView)
+
+    public func flush(completion: ((Result<Void, HeatmapError>) -> Void)?)
+}
+
+public struct HeatmapConfig {
+    public var endpoint: URL                  // 전송 대상
+    public var headers: [String: String]      // 인증 등
+    public var excludedScreens: Set<String>   // 민감화면 제외
+    public var samplingRate: Double           // 0...1, 기본 1.0
+    public var scrollSampleHz: Int            // 기본 10
+    public var maxBatchSize: Int              // 기본 500
+    public var flushInterval: TimeInterval    // 기본 30s
+    public var storageDirectory: URL?
+    public var uploader: HeatmapUploader?     // nil이면 내장 전송기 사용
+    public init(endpoint: URL)
+}
+
+public protocol HeatmapUploader: AnyObject { // 커스텀 전송 원하면 주입
+    func upload(batch: Data, completion: @escaping (Result<Void, Error>) -> Void)
+}
+
+public struct HeatmapError: Error, Equatable, Sendable {  // struct+code (CTO 조건)
+    public struct Code: RawRepresentable, Hashable, Sendable {
+        public let rawValue: Int
+        public init(rawValue: Int) { self.rawValue = rawValue }
+        public static let notConfigured      = Code(rawValue: 1)
+        public static let alreadyRunning     = Code(rawValue: 2)
+        public static let consentNotGranted  = Code(rawValue: 3)
+        public static let storageUnavailable = Code(rawValue: 4)
+        public static let encodingFailed     = Code(rawValue: 5)
+        public static let uploadFailed       = Code(rawValue: 6)
+    }
+    public let code: Code
+    public let message: String
+    public let underlying: Error?
+}
+```
+
+## 4. 내장 전송기 (Direct Sender)
+- 로컬 JSONL 배치 적재 → `maxBatchSize` 또는 `flushInterval` 도달 시 `endpoint`로 POST.
+- `URLSession` 기반, 지수 백오프 재시도, 실패 시 로컬 보존(다음 flush에 재시도).
+- 앱 백그라운드 진입 시 `flush()` 권장(호스트가 호출).
+- `config.uploader` 주입 시 내장 전송 대신 그걸 사용.
+
+## 5. 성능 예산 (유지)
+| 항목 | 목표 |
+|---|---|
+| 터치당 메인스레드 | < 0.5ms (정규화 좌표계산 + 큐 enqueue만) |
+| 인코딩/디스크 IO/네트워크 | 100% 백그라운드 큐 |
+| 스크롤 10Hz 샘플링 메인 점유 | < 1% |
+
+## 6. 프라이버시 / 안전성 (금융 floor, 유지)
+- **동의 기본 OFF**, 수집 차단. "동의 OFF ⇒ 이벤트 0건" 회귀테스트 = 릴리즈 게이트.
+- **민감화면 제외**(`excludedScreens`): 제외 화면은 탭·스크롤 모두 미수집.
+- **콘텐츠 비수집 불변식**: 좌표·화면이름·시간만. 텍스트/입력값 절대 미수집. (elementID도 미수집 → PII 경로 제거)
+- **PrivacyInfo.xcprivacy**: **권장(선택) 산출물 — 1.0 필수 아님**(정정 2026-07-01).
+  현재 코드는 Required Reason API(`UserDefaults`/파일 타임스탬프/`systemUptime`/디스크용량 등)를 **미사용**하므로 App Store 자동 리젝 대상이 아니다.
+  데이터 수집 신고는 매니페스트 없이도 **호스트 앱의 App Privacy 라벨**로 처리 가능(호스트 책임).
+  추가 시 권장값: `NSPrivacyTracking=false`, data category "Product Interaction".
+  ⚠️ 향후 캐시를 `UserDefaults`로 바꾸거나 파일 타임스탬프를 읽으면 그때는 required-reason 선언이 **필수**가 된다.
+- panic 금지(fatalError/강제 unwrap 없음).
+- 전송 대상이 외부 서버이므로, screen 이름에 PII가 들어가지 않도록 호스트 가이드 문서화.
+
+## 7. 패키지 / 빌드
+- SwiftPM 2 타겟: `HeatmapCore`(스키마/에러) + `HeatmapKit`(수집+전송). Viz 제거.
+- 서드파티 0 의존성(Foundation/UIKit만). iOS 14+, Swift 5.9+.
+- CocoaPods podspec은 host-app 인벤토리 확인 후(Later).
+
+## 8. 테스트 전략
+- Core: 정규화 좌표(여러 화면크기), scrollDepth 계산, Codable round-trip, schemaVersion forward-compat.
+- Kit: 제외화면 필터, 샘플링, **동의OFF=0건(게이트)**, scrollView weak untrack, 배치/재시도.
+- 전송: 가짜 endpoint(URLProtocol stub)로 배치 POST·재시도·실패보존 검증.
+- 성능: 터치당 <0.5ms 마이크로벤치.
+
+## 9. 미결 / 의존
+- window 후킹 방식(교체 vs 런타임 옵저버) — 구현 프로토타입에서 확정. 기본 비스위즐.
+- screen 이름 PII 가이드(법무 경량 확인) — elementID 제거로 리스크 크게 축소.
+
+---
+작성: SDK Team + po-team 스코프 재정의 | 2026-07-01 | 버전 v1.0 (collection-only)
