@@ -122,7 +122,7 @@ Hitmap_Project/
 | 필드 | 의미 |
 |---|---|
 | `id` | 이벤트 UUID — ACK 유실/재시도 시 **서버 측 멱등 dedup**용 |
-| `type` | `tap` \| `scroll` |
+| `type` | `tap` \| `scroll` — 탭은 **눌렀다 거의 안 움직이고 뗀 것**만(이동 ≤ `TrackingWindow.tapSlop`, 기본 10pt). 스크롤/드래그는 탭으로 안 잡힘 |
 | `screen` | 화면 이름(문자열). 매핑은 수집 측이 나중에. **PII 금지** |
 | `x`,`y` | 탭 정규화 좌표 0~1 (뷰 bounds 기준) |
 | `scrollDepth` | 스크롤 정규화 깊이 0~1 |
