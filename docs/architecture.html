@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HitHit — 아키텍처 & 플로우</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root{
+    --ios:#3b82f6; --ios-bg:#eff6ff;
+    --srv:#10b981; --srv-bg:#ecfdf5;
+    --ink:#1e293b; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; --card:#fff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    line-height:1.65;}
+  header{background:linear-gradient(135deg,#1e3a8a,#0f766e);color:#fff;padding:48px 24px;text-align:center;}
+  header h1{margin:0 0 8px;font-size:32px;letter-spacing:-.02em}
+  header p{margin:0;opacity:.9;font-size:16px}
+  .wrap{max-width:960px;margin:0 auto;padding:32px 24px 80px;}
+  section{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:28px;margin:24px 0;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  h2{margin:0 0 4px;font-size:22px;display:flex;align-items:center;gap:10px}
+  h2 .tag{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px}
+  .tag.ios{background:var(--ios-bg);color:var(--ios)}
+  .tag.srv{background:var(--srv-bg);color:var(--srv)}
+  .lead{color:var(--muted);margin:.2em 0 1.2em}
+  h3{margin:1.4em 0 .4em;font-size:15px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  ul{margin:.3em 0;padding-left:1.1em}
+  li{margin:.35em 0}
+  code{background:#f1f5f9;padding:1px 6px;border-radius:5px;font-size:13px;
+    font-family:"SF Mono",ui-monospace,Menlo,monospace}
+  pre{background:#0f172a;color:#e2e8f0;padding:16px;border-radius:10px;overflow:auto;font-size:13px;
+    font-family:"SF Mono",ui-monospace,Menlo,monospace;line-height:1.5}
+  .badges span{display:inline-block;background:#f1f5f9;color:var(--muted);border:1px solid var(--line);
+    border-radius:999px;padding:3px 12px;font-size:12px;margin:3px 4px 3px 0}
+  .mermaid{background:#fff;text-align:center;margin:8px 0}
+  table{width:100%;border-collapse:collapse;margin:.6em 0;font-size:14px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .repo{font-size:13px;color:var(--muted)}
+  .repo a{color:var(--ios);text-decoration:none}
+  footer{text-align:center;color:var(--muted);font-size:13px;padding:0 24px 40px}
+</style>
+</head>
+<body>
+<header>
+  <h1>HitHit — 아키텍처 &amp; 플로우</h1>
+  <p>iOS UX 히트맵 수집 SDK <b>HitHitKit</b> + 동반 수집·렌더 서버 <b>hithitkit-server</b></p>
+</header>
+
+<div class="wrap">
+
+  <section>
+    <h2>🔭 한눈에</h2>
+    <p class="lead">사용자의 탭·스크롤을 <b>정규화 좌표로만</b> 모아 서버로 보내고, 서버는 그 데이터를 적재했다가
+      명령 한 번으로 <b>히트맵 PNG</b>를 만든다. SDK는 수집만, 렌더는 서버가 담당한다.</p>
+
+    <div class="mermaid">
+flowchart TD
+  U["👆 사용자 · 탭 / 스크롤"]
+  subgraph SDK["📱 HitHitKit — iOS 앱 내부 (수집)"]
+    direction TB
+    TW["TrackingWindow<br/>.ended + tapSlop(10pt) → 탭<br/>window(화면) 기준 정규화"]
+    ST["ScrollTracker<br/>스크롤뷰 자동 등록(비스위즐)<br/>10Hz · scrollDepth"]
+    COL["HitHitCollector<br/>start · consent · setScreen"]
+    PIPE["EventPipeline<br/>게이트: 실행·동의·제외화면·샘플링"]
+    BUF[("EventStore<br/>JSONL 임시 버퍼")]
+    UP["DefaultHTTPUploader<br/>.immediate / .batched · 지수백오프 재시도"]
+    TW --> COL
+    ST --> PIPE
+    COL --> PIPE --> BUF --> UP
+  end
+  U --> TW
+  U --> ST
+  UP -->|"HTTPS POST · JSON 배열"| SRV
+  subgraph SERVER["🗄️ hithitkit-server — Python 단일 바이너리"]
+    direction TB
+    SRV["serve · CollectorServer<br/>POST / · GET /health · /stats"]
+    STORE[("Storage<br/>file · sqlite · s3 · postgres · http")]
+    REND["hitmap 명령<br/>filter → density(gaussian) → palette LUT"]
+    PNG["📊 히트맵 PNG"]
+    SRV -->|"storage.append"| STORE
+    STORE -->|"read_all"| REND --> PNG
+  end
+    </div>
+    <p class="lead" style="margin-top:1em">데이터의 <b>원본은 서버</b>. 로컬 JSONL 버퍼는 전송 실패·오프라인 대비 임시 저장일 뿐, 전송 성공 시 즉시 비워진다.</p>
+  </section>
+
+  <section>
+    <h2>📱 HitHitKit <span class="tag ios">iOS SDK</span></h2>
+    <p class="repo">repo: <a href="https://github.com/DevVenusK/iOS-HitHit">github.com/DevVenusK/iOS-HitHit</a></p>
+    <p class="lead">호스트 iOS 앱의 탭·스크롤 상호작용을 디바이스 무관한 정규화 좌표로 수집해 서버로 직접 전송하는
+      1st-party 분석 SDK. <b>히트맵 렌더링은 범위 밖</b> — 수집만 한다.</p>
+
+    <div class="badges">
+      <span>Swift 5.9+</span><span>iOS 14+</span><span>SwiftPM</span>
+      <span>서드파티 의존성 0</span><span>동의 기본 OFF</span><span>좌표만 수집</span><span>터치당 &lt;0.5ms</span>
+    </div>
+
+    <h3>수집 파이프라인</h3>
+    <table>
+      <tr><th>컴포넌트</th><th>역할</th></tr>
+      <tr><td><code>TrackingWindow</code></td><td>전역 탭 인터셉트. <code>.ended</code>에서 이동거리 ≤ <code>tapSlop</code>(10pt)일 때만 탭으로 기록(스크롤/드래그 제외). 좌표는 <b>window 화면 기준</b>으로 정규화.</td></tr>
+      <tr><td><code>ScrollTracker</code></td><td>터치가 시작된 스크롤뷰를 자동 등록(스위즐 아님). <code>CADisplayLink</code> 10Hz로 <code>scrollDepth</code>(adjustedContentInset 반영) 샘플. 백그라운드 시 일시정지.</td></tr>
+      <tr><td><code>HitHitCollector</code></td><td>공개 파사드: <code>start</code>·<code>stop</code>·<code>setConsent</code>·<code>setScreen</code>·<code>track</code>·<code>flush</code>·<code>purgePendingEvents</code>. 내부 상태는 lock으로 보호.</td></tr>
+      <tr><td><code>EventPipeline</code></td><td>순수 게이트(<code>CollectionGate</code>)로 실행·동의·제외화면·샘플링 판정 → 버퍼 적재 → 전송(코얼레싱 드레인).</td></tr>
+      <tr><td><code>EventStore</code></td><td>JSONL 임시 버퍼. 전송 성공분만 라인 단위로 제거(중복/유실 방지), 실패분 보존.</td></tr>
+      <tr><td><code>DefaultHTTPUploader</code></td><td><code>endpoint</code>로 JSON 배열 POST. 지수 백오프 재시도, 실패 시 로컬 보존.</td></tr>
+      <tr><td><code>HitHitCore</code></td><td>순수 로직: <code>HitHitEvent</code> 스키마 · <code>Normalization</code> · <code>TouchClassifier</code> · <code>HitHitError</code>.</td></tr>
+    </table>
+
+    <h3>전송되는 이벤트 (wire format)</h3>
+<pre>{ "schemaVersion":1, "id":"UUID", "type":"tap|scroll",
+  "screen":"loan_detail",
+  "x":0.42, "y":0.73,              // tap: 정규화 0~1
+  "scrollDepth":0.65,              // scroll: 정규화 깊이 0~1
+  "screenW":402, "screenH":874,    // 정규화 기준 화면 크기
+  "device":"iPhone15,3", "orientation":"portrait",
+  "ts":1719800000000 }             // epoch ms</pre>
+    <p class="lead">콘텐츠·입력값·요소식별자는 절대 담기지 않는다. 좌표·화면이름·시간만.</p>
+  </section>
+
+  <section>
+    <h2>🗄️ hithitkit-server <span class="tag srv">Python 바이너리</span></h2>
+    <p class="repo">repo: <code>hithitkit-server</code> (동반 서버 · 단일 실행 바이너리)</p>
+    <p class="lead">HitHitKit이 보낸 이벤트를 <b>적재(serve)</b>하고, 명령 한 번으로 그 데이터에서
+      <b>히트맵 PNG를 생성(hitmap)</b>하는 동반 서버. 저장소는 URL 스킴으로 교체 가능.</p>
+
+    <div class="badges">
+      <span>Python · stdlib http.server</span><span>numpy · scipy · Pillow</span>
+      <span>PyInstaller 단일 바이너리</span><span>저장소 플러그블</span>
+    </div>
+
+    <h3>CLI</h3>
+<pre># 수집 서버
+hithitkit serve --bind http://0.0.0.0:8899 --storage file:///data/events.jsonl
+
+# 히트맵 생성 (tap | scroll | both)
+hithitkit hitmap --storage file:///data/events.jsonl --type both --points --open</pre>
+
+    <h3>HTTP 엔드포인트</h3>
+    <table>
+      <tr><th>메서드 · 경로</th><th>동작</th></tr>
+      <tr><td><code>POST /</code></td><td>이벤트 적재. JSON 배열 또는 단건 → <code>storage.append</code> → <code>{"ok":true,"stored":N}</code>. 파싱 실패 시 400.</td></tr>
+      <tr><td><code>GET /health</code></td><td>헬스체크(<code>ok</code>).</td></tr>
+      <tr><td><code>GET /stats</code></td><td>적재 통계: total · by_type · by_screen.</td></tr>
+    </table>
+
+    <h3>저장소 (URL 스킴)</h3>
+    <div class="badges">
+      <span>file://…jsonl</span><span>sqlite://…db</span><span>s3://bucket/prefix</span>
+      <span>postgres://…</span><span>http(s)://…/ingest (write-forward)</span>
+    </div>
+
+    <h3>히트맵 렌더 파이프라인</h3>
+    <div class="mermaid">
+flowchart LR
+  A["storage.read_all()"] --> B["filter_events<br/>screen · device · size · type"]
+  B --> C["density field<br/>numpy + scipy gaussian_filter"]
+  C --> D["palette LUT<br/>blue → red 컬러맵"]
+  D --> E["PIL 합성<br/>--canvas 실제 화면비 · --points · --radius"]
+  E --> F["📊 hitmap PNG"]
+    </div>
+    <p class="lead">같은 <code>(screen, device, size, orientation)</code> 버킷끼리만 집계해야 좌표가 의미를 가진다
+      (v0.0.5부터 SDK가 window 기준으로 정규화해 화면당 일관됨).</p>
+  </section>
+
+  <section>
+    <h2>🔒 프라이버시 · 신뢰 원칙</h2>
+    <ul>
+      <li><b>동의 마스터 스위치</b> — 기본 OFF. <code>setConsent(true)</code> 전엔 수집·전송 0건. 철회 시 신규 수집·업로드 중단 + <code>purgePendingEvents()</code>.</li>
+      <li><b>좌표만</b> — 텍스트·입력값·요소식별자 미수집. <code>screen</code> 이름엔 PII 금지(고정 심볼릭 이름).</li>
+      <li><b>민감화면 제외</b> — <code>excludedScreens</code>로 로그인·계좌·금액 화면 차단.</li>
+      <li><b>성능 예산</b> — 터치당 메인스레드 &lt;0.5ms(정규화+enqueue만), 인코딩·IO·네트워크는 100% 백그라운드.</li>
+      <li><b>서버 dedup</b> — 이벤트 <code>id</code>(UUID)로 재시도·ACK 유실 시 서버 측 멱등 처리.</li>
+    </ul>
+  </section>
+
+</div>
+
+<footer>생성: HitHit 아키텍처 문서 · 다이어그램 mermaid</footer>
+
+<script>
+  mermaid.initialize({startOnLoad:true, theme:"base", themeVariables:{
+    primaryColor:"#eff6ff", primaryBorderColor:"#3b82f6", primaryTextColor:"#1e293b",
+    lineColor:"#94a3b8", fontSize:"13px"
+  }});
+</script>
+</body>
+</html>
