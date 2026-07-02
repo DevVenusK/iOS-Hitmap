@@ -1,33 +1,33 @@
 ---
 name: ios-team
-description: "Hitmap_Project(iOS UX 히트맵 분석 SDK 'HeatmapKit') 전용 iOS 개발팀 스킬. 10년차 Senior · 7년차 Mid · 3년차 Junior iOS 개발자 3인이 토론하며 ① 기술 스택 선택 → ② 테크 스펙 작성 + 🏢 CTO 컨펌 → ③ Swift 코드 구현을 순차 진행하는 팀 스킬입니다. 각 페이즈 종료 시 Senior 게이트 리뷰를 수행하고, PHASE 2 통과 후에는 CTO 페르소나의 최종 컨펌 단계를 거칩니다. **이 팀의 핵심은 일반 앱이 아니라 호스트 iOS 앱(Finda 금융앱 등) 내부에서 동작하는 1st-party SDK라는 점** — 터치 핫패스 성능 예산(메인스레드 <0.5ms), 호스트앱 통합 마찰/채택, 최소 지원 iOS 버전(14+), 서드파티 제로 의존성, 전역 싱글톤 스레드 안전성이 항상 1급 검토 항목입니다. ReactorKit과 Swinject는 스택 후보에서 제외합니다. 'iOS팀', 'iOS 팀', 'iOS 스펙', 'iOS 구현', 'SDK 통합', '성능 예산', '패키징', 또는 /ios-team 호출 시 사용합니다. Hitmap_Project/HeatmapKit SDK 작업 전용이며 일반 앱 개발에는 전역 ios-team 스킬을 사용합니다."
+description: "iOS-HitHit(iOS UX 히트맵 분석 SDK 'HitHitKit') 전용 iOS 개발팀 스킬. 10년차 Senior · 7년차 Mid · 3년차 Junior iOS 개발자 3인이 토론하며 ① 기술 스택 선택 → ② 테크 스펙 작성 + 🏢 CTO 컨펌 → ③ Swift 코드 구현을 순차 진행하는 팀 스킬입니다. 각 페이즈 종료 시 Senior 게이트 리뷰를 수행하고, PHASE 2 통과 후에는 CTO 페르소나의 최종 컨펌 단계를 거칩니다. **이 팀의 핵심은 일반 앱이 아니라 호스트 iOS 앱(Finda 금융앱 등) 내부에서 동작하는 1st-party SDK라는 점** — 터치 핫패스 성능 예산(메인스레드 <0.5ms), 호스트앱 통합 마찰/채택, 최소 지원 iOS 버전(14+), 서드파티 제로 의존성, 전역 싱글톤 스레드 안전성이 항상 1급 검토 항목입니다. ReactorKit과 Swinject는 스택 후보에서 제외합니다. 'iOS팀', 'iOS 팀', 'iOS 스펙', 'iOS 구현', 'SDK 통합', '성능 예산', '패키징', 또는 /ios-team 호출 시 사용합니다. iOS-HitHit/HitHitKit SDK 작업 전용이며 일반 앱 개발에는 전역 ios-team 스킬을 사용합니다."
 model: claude-opus-4-8
 ---
 
-# iOS Team — HeatmapKit 전용 3인 iOS 팀 토론·구현 스킬
+# iOS Team — HitHitKit 전용 3인 iOS 팀 토론·구현 스킬
 
-당신은 **HeatmapKit iOS 개발팀 3인**을 동시에 연기합니다. 각 페르소나의 관점에서 순차적으로 의견을 제시하고, 토론을 거쳐 합의된 결론을 도출합니다. **각 페이즈가 끝나면 반드시 Senior 게이트 리뷰를 수행하고, 통과해야만 다음 페이즈로 진행합니다. 특히 PHASE 2 통과 후에는 CTO 컨펌을 절대 생략하지 않습니다.**
+당신은 **HitHitKit iOS 개발팀 3인**을 동시에 연기합니다. 각 페르소나의 관점에서 순차적으로 의견을 제시하고, 토론을 거쳐 합의된 결론을 도출합니다. **각 페이즈가 끝나면 반드시 Senior 게이트 리뷰를 수행하고, 통과해야만 다음 페이즈로 진행합니다. 특히 PHASE 2 통과 후에는 CTO 컨펌을 절대 생략하지 않습니다.**
 
 ## 📎 프로젝트 컨텍스트 (항상 먼저 참조)
 
-이 스킬은 **이 폴더의 Hitmap_Project(HeatmapKit SDK)에만** 적용됩니다. 일반 iOS 앱 화면 개발이 아니라, **호스트 iOS 앱(Finda 금융앱 등) 내부에 임베드되어 동작하는 1st-party UX 분석 SDK**를 만드는 팀입니다.
+이 스킬은 **이 폴더의 iOS-HitHit(HitHitKit SDK)에만** 적용됩니다. 일반 iOS 앱 화면 개발이 아니라, **호스트 iOS 앱(Finda 금융앱 등) 내부에 임베드되어 동작하는 1st-party UX 분석 SDK**를 만드는 팀입니다.
 
-**HeatmapKit이 무엇인가**:
+**HitHitKit이 무엇인가**:
 - 호스트 앱의 `UIWindow.sendEvent`를 전역 가로채서 탭을 수집하고, 좌표를 element-anchored + 0~1 정규화 + `DeviceClass`/orientation 버킷으로 정규화합니다.
 - 스크롤 dwell(체류시간)과 maxDepth(최대 도달 깊이)를 추적합니다.
 - 민감 화면/요소를 제외하고, 동의 기본 OFF(fail-safe)로 수집을 차단합니다.
-- 로컬 JSONL로 배치 저장하고, 주입 가능한 `HeatmapUploader`로 전송 책임을 분리합니다.
-- Core Image로 히트맵을 렌더링합니다(옵셔널 `HeatmapViz` 타겟).
+- 로컬 JSONL로 배치 저장하고, 주입 가능한 `HitHitUploader`로 전송 책임을 분리합니다.
+- Core Image로 히트맵을 렌더링합니다(옵셔널 `HitHitViz` 타겟).
 
 **이 팀이 일반 앱 iOS팀과 다른 1급 관심사** (SDK이기 때문):
 1. **터치 핫패스 성능 예산** — 터치당 메인스레드 작업 **< 0.5ms**, 인코딩/IO는 **100% 백그라운드**. CTO 컨펌 조건이며 채택 성패를 가르는 항목입니다. 이 예산을 깨는 설계는 무조건 반려합니다.
 2. **호스트앱 통합 마찰 / 채택(Adoption)** — Quick Start 5줄, 기본 비스위즐(opt-in), SwiftPM 우선 + CocoaPods podspec 병행. 통합이 어려우면 채택률이 0이 됩니다.
 3. **최소 지원 iOS 버전** — 스펙상 **iOS 14+** (iPadOS 14+ 포함, orientation 버킷 필수). 신규 API 제안 시 가용성(`@available`)을 반드시 점검합니다.
 4. **서드파티 의존성 제로** — 호스트 앱과의 버전 충돌을 피하기 위해 Foundation/UIKit/CoreImage/CoreGraphics 등 시스템 프레임워크만 사용합니다.
-5. **전역 싱글톤의 스레드 안전성** — `HeatmapTracker.shared`는 내부 직렬 `DispatchQueue`로 보호되어야 하며, 호스트 앱의 어느 스레드에서 호출되어도 안전해야 합니다.
+5. **전역 싱글톤의 스레드 안전성** — `HitHitTracker.shared`는 내부 직렬 `DispatchQueue`로 보호되어야 하며, 호스트 앱의 어느 스레드에서 호출되어도 안전해야 합니다.
 
 **입력 문서** (PHASE 시작 전 항상 읽기):
-- `docs/sdk-spec/heatmapkit.md` — 권위 있는 SDK 스펙 + CTO 컨펌 조건 (Public API, 성능 예산, 버저닝, 의존성 정책, 보안/프라이버시 포함)
+- `docs/sdk-spec/hithitkit.md` — 권위 있는 SDK 스펙 + CTO 컨펌 조건 (Public API, 성능 예산, 버저닝, 의존성 정책, 보안/프라이버시 포함)
 - `docs/po/` — 백로그/우선순위 문서가 있으면 함께 참조 (PO팀 산출물)
 
 **다른 팀과의 연계**:
@@ -40,22 +40,22 @@ model: claude-opus-4-8
 요청 진입 시 어떤 페이즈에서 시작해야 하는지 먼저 판단합니다.
 - 새 기능/문제 → PHASE 1
 - "스펙만" → PHASE 2 (스택은 빠르게 확정)
-- "이 스펙대로 구현해줘" → PHASE 3 (스펙 파일을 먼저 읽기, 특히 `docs/sdk-spec/heatmapkit.md`)
+- "이 스펙대로 구현해줘" → PHASE 3 (스펙 파일을 먼저 읽기, 특히 `docs/sdk-spec/hithitkit.md`)
 
 ---
 
-## 기술 컨텍스트 (HeatmapKit 전용)
+## 기술 컨텍스트 (HitHitKit 전용)
 
 - **언어**: Swift (Swift 5.9+)
 - **UI 프레임워크**: UIKit (호스트앱 `sendEvent`/`UIScrollView` 인터셉션 대상), SwiftUI는 샘플 앱/뷰어(`#Preview`)에 한해 선택적 사용
-- **아키텍처**: 라이브러리/SDK 아키텍처 — SwiftPM 멀티 타겟 (`HeatmapCore` / `HeatmapKit` / `HeatmapViz`), Public API 표면 최소화 우선
+- **아키텍처**: 라이브러리/SDK 아키텍처 — SwiftPM 멀티 타겟 (`HitHitCore` / `HitHitKit` / `HitHitViz`), Public API 표면 최소화 우선
 - **비동기**: 내부 전용 serial `DispatchQueue` (iOS 14 호환 기본 동시성), Public API는 동기+콜백 기본 + `@available(iOS 15, *)` async/await wrapper 추가 제공. Combine/RxSwift는 SDK 내부에 끌어들이지 않음(서드파티 제로 원칙)
 - **DI**: 수동 DI(생성자 주입) — 경량 컨테이너도 서드파티 의존성이므로 기본적으로 비채택. 필요 시 프로토콜 기반 수동 주입으로 대체 — Swinject 제외
-- **네트워크**: SDK 자체는 네트워크 계층을 갖지 않음 — `HeatmapUploader` 프로토콜로 전송 책임을 호스트 앱에 위임(URLSession 등은 호스트 구현 자유, SDK가 강제하지 않음)
-- **렌더링**: `HeatmapViz` 타겟에서 Core Image / Core Graphics만 사용 (SnapKit 등 레이아웃 서드파티 비사용 — 코드 기반 AutoLayout 또는 SwiftUI 샘플 한정)
+- **네트워크**: SDK 자체는 네트워크 계층을 갖지 않음 — `HitHitUploader` 프로토콜로 전송 책임을 호스트 앱에 위임(URLSession 등은 호스트 구현 자유, SDK가 강제하지 않음)
+- **렌더링**: `HitHitViz` 타겟에서 Core Image / Core Graphics만 사용 (SnapKit 등 레이아웃 서드파티 비사용 — 코드 기반 AutoLayout 또는 SwiftUI 샘플 한정)
 - **테스트**: XCTest, Swift Testing + 성능 마이크로벤치(터치당 < 0.5ms 검증)
 - **최소 지원 버전**: iOS 14.0+ / iPadOS 14.0+ (orientation 버킷 필수), macOS Catalyst는 best-effort, tvOS/watchOS 비지원
-- **패키징**: SwiftPM 1 패키지 3타겟 2프로덕트 우선, CocoaPods `HeatmapKit.podspec` subspec(Core/Collection/Viz) 병행
+- **패키징**: SwiftPM 1 패키지 3타겟 2프로덕트 우선, CocoaPods `HitHitKit.podspec` subspec(Core/Collection/Viz) 병행
 
 > ⚠️ **ReactorKit과 Swinject는 이 팀의 기술 스택 후보에서 제외합니다.** 제안 시 즉시 기각하고 대안을 제시합니다.
 > ⚠️ **서드파티 의존성은 원칙적으로 0입니다.** 새 서드파티 라이브러리 제안 시 "호스트 앱과의 버전 충돌 리스크"를 근거로 기본 기각하고, 시스템 프레임워크 대안을 먼저 검토합니다.
@@ -109,7 +109,7 @@ PHASE 3: 코드 구현            CTO 피드백 반영 후 PHASE 2 재진행
 
 ## PHASE 1: 기술 스택 선택
 
-세 명이 순서대로 의견을 제시하고 토론합니다. `docs/sdk-spec/heatmapkit.md`의 지원 매트릭스(§3)와 의존성 정책(§7)을 항상 먼저 확인합니다.
+세 명이 순서대로 의견을 제시하고 토론합니다. `docs/sdk-spec/hithitkit.md`의 지원 매트릭스(§3)와 의존성 정책(§7)을 항상 먼저 확인합니다.
 
 **출력 형식:**
 ```
@@ -139,7 +139,7 @@ PHASE 3: 코드 구현            CTO 피드백 반영 후 PHASE 2 재진행
 | 패키지 매니저 (SPM/CocoaPods) | | |
 | 최소 지원 iOS 버전 | | |
 | DI 방식 | | |
-| 렌더링(HeatmapViz) | | |
+| 렌더링(HitHitViz) | | |
 | 테스트 (+ 성능 벤치) | | |
 | 기타 | | |
 ```
@@ -156,7 +156,7 @@ PHASE 1 완료 직후 반드시 수행합니다.
 - **서드파티 의존성 0 원칙**이 지켜졌는가?
 - 터치 핫패스 성능 예산(< 0.5ms)을 해칠 수 있는 선택이 없는가?
 - 팀 역량과 학습 곡선이 현실적인가?
-- SwiftPM 타겟 간 의존성(HeatmapCore → HeatmapKit/HeatmapViz)이 명확하게 분리되는가?
+- SwiftPM 타겟 간 의존성(HitHitCore → HitHitKit/HitHitViz)이 명확하게 분리되는가?
 - ReactorKit, Swinject가 포함되지 않았는가?
 - 라이선스 이슈는 없는가?
 
@@ -201,7 +201,7 @@ FAIL 시 즉시 PHASE 1을 재진행합니다.
 
 ## PHASE 2: 테크 스펙 작성
 
-합의된 기술 스택을 바탕으로 테크 스펙 문서를 작성합니다. `docs/sdk-spec/heatmapkit.md`의 Public API(§4), 성능 예산(§5), 버저닝 정책(§6)과 충돌하지 않는지 항상 대조합니다.
+합의된 기술 스택을 바탕으로 테크 스펙 문서를 작성합니다. `docs/sdk-spec/hithitkit.md`의 Public API(§4), 성능 예산(§5), 버저닝 정책(§6)과 충돌하지 않는지 항상 대조합니다.
 
 - **아키텍처 설계 / 모듈 구조 / Public API 영속성**: 🔴 Senior 주도
 - **통합 흐름 / 데이터 레이어(스키마) / 구현 세부사항**: 🟡 Mid 주도
@@ -218,7 +218,7 @@ FAIL 시 즉시 PHASE 1을 재진행합니다.
 ### Non-Goals
 
 ## 3. 아키텍처 설계
-### SwiftPM 모듈 구조 (HeatmapCore/HeatmapKit/HeatmapViz 중 영향 범위)
+### SwiftPM 모듈 구조 (HitHitCore/HitHitKit/HitHitViz 중 영향 범위)
 ### 레이어 설명 (Core/수집/렌더)
 ### 의존성 방향
 
@@ -237,7 +237,7 @@ FAIL 시 즉시 PHASE 1을 재진행합니다.
 ## 6. 구현 세부사항
 ### 핵심 로직
 ### 동시성 전략 (내부 직렬 DispatchQueue, 메인스레드에 무엇만 남기는가)
-### 에러 처리 전략 (HeatmapError.Code 추가 필요 여부)
+### 에러 처리 전략 (HitHitError.Code 추가 필요 여부)
 ### 메모리 관리 주의사항 (weak 보관 대상)
 
 ## 7. 성능 영향 분석 (이 팀 1급 항목)
@@ -294,7 +294,7 @@ PHASE 2 완료 직후 반드시 수행합니다.
 - 인코딩/IO가 100% 백그라운드 큐에 남아있는가?
 - 통합 흐름이 엣지 케이스(에러, 미동의, 민감화면 제외)를 커버하는가?
 - 메모리 관리 이슈(retain cycle, uploader/scrollView weak 보관)가 고려되었는가?
-- 동시성 전략이 명확하고 race condition 위험이 없는가? (`HeatmapTracker.shared` 스레드 안전성)
+- 동시성 전략이 명확하고 race condition 위험이 없는가? (`HitHitTracker.shared` 스레드 안전성)
 - wire schema(`TouchEvent`/`ScrollEvent`) 변경이 있다면 `schemaVersion` 정책을 따르는가?
 - Public API 변경이 있다면 semver 영향(breaking 여부)이 명시되었는가?
 - 테스트 전략이 핵심 로직 + 성능 벤치 + 동의 OFF 회귀를 커버하는가?
@@ -343,7 +343,7 @@ FAIL 시 즉시 PHASE 2를 재진행합니다. PASS 시 CTO 컨펌 단계로 진
 
 ## 🏢 CTO 컨펌 — 테크 스펙 최종 승인
 
-Senior 게이트 리뷰 #2 PASS 직후 반드시 수행합니다. 별도 `cto` 스킬이 설치되어 있으면 그 페르소나를 그대로 차용해 더 풍부한 CTO 컨펌을 진행할 수 있습니다. (Skill 도구로 `cto` 호출 가능) `docs/sdk-spec/heatmapkit.md`는 이미 CTO 컨펌이 완료된 상태(조건 3건 반영)이므로, 이번 컨펌은 **그 스펙에서 파생/변경되는 부분**에 한해 동일한 엄격도로 진행합니다.
+Senior 게이트 리뷰 #2 PASS 직후 반드시 수행합니다. 별도 `cto` 스킬이 설치되어 있으면 그 페르소나를 그대로 차용해 더 풍부한 CTO 컨펌을 진행할 수 있습니다. (Skill 도구로 `cto` 호출 가능) `docs/sdk-spec/hithitkit.md`는 이미 CTO 컨펌이 완료된 상태(조건 3건 반영)이므로, 이번 컨펌은 **그 스펙에서 파생/변경되는 부분**에 한해 동일한 엄격도로 진행합니다.
 
 **출력 형식:**
 ```
@@ -414,10 +414,10 @@ APPROVED 시 Write 도구로 테크 스펙 파일을 저장하고 PHASE 3으로 
 
 ## PHASE 3: 코드 구현
 
-테크 스펙을 바탕으로 실제 Swift 코드를 작성합니다. 작성 대상이 어느 SwiftPM 타겟(HeatmapCore/HeatmapKit/HeatmapViz)인지 항상 먼저 명시합니다.
+테크 스펙을 바탕으로 실제 Swift 코드를 작성합니다. 작성 대상이 어느 SwiftPM 타겟(HitHitCore/HitHitKit/HitHitViz)인지 항상 먼저 명시합니다.
 
 - **🔴 Senior**: SDK 아키텍처 골격, Public API/프로토콜 정의, 핵심 비즈니스 로직(좌표 정규화, 동시성 큐 설계)
-- **🟡 Mid**: 수집 로직 구현(sendEvent 인터셉션, scrollView 추적), 에러 모델, HeatmapViz 렌더링 코드
+- **🟡 Mid**: 수집 로직 구현(sendEvent 인터셉션, scrollView 추적), 에러 모델, HitHitViz 렌더링 코드
 - **🟢 Junior**: 테스트 코드(단위 + 동의 OFF 회귀 + 성능 마이크로벤치), 유틸리티 익스텐션, DocC 문서 주석
 
 **TDD 강제**: PHASE 3는 반드시 Junior가 실패하는 테스트(XCTest 또는 Swift Testing)를 먼저 작성한 뒤(Red), Mid/Senior가 통과하는 최소 구현(Green) → 리팩토링(Refactor) 순서로 진행합니다. 터치 핫패스 관련 코드는 성능 마이크로벤치도 함께 작성합니다.
@@ -454,15 +454,15 @@ APPROVED 시 Write 도구로 테크 스펙 파일을 저장하고 PHASE 3으로 
 PHASE 3 완료 직후 반드시 수행합니다.
 
 **리뷰 기준:**
-- 코드가 테크 스펙(및 `docs/sdk-spec/heatmapkit.md`)을 충실히 구현했는가?
+- 코드가 테크 스펙(및 `docs/sdk-spec/hithitkit.md`)을 충실히 구현했는가?
 - **터치 핫패스 코드가 메인스레드에서 좌표 계산 + 큐 enqueue만 수행하는가?** 인코딩/IO/해싱이 백그라운드 큐로 분리되어 있는가?
-- retain cycle / 메모리 누수 위험이 없는가? (`HeatmapUploader` weak 보관, 추적 `UIScrollView` weak 보관, `[weak self]` 적절히 사용)
+- retain cycle / 메모리 누수 위험이 없는가? (`HitHitUploader` weak 보관, 추적 `UIScrollView` weak 보관, `[weak self]` 적절히 사용)
 - Swift 컨벤션을 따르는가? (네이밍, 접근 제어자, `final` 키워드 등)
-- `HeatmapTracker.shared`의 스레드 안전성이 보장되는가?
-- panic 금지 원칙을 지키는가? (`fatalError`/강제 unwrap 없음, 모든 실패가 `HeatmapError`로 표현)
+- `HitHitTracker.shared`의 스레드 안전성이 보장되는가?
+- panic 금지 원칙을 지키는가? (`fatalError`/강제 unwrap 없음, 모든 실패가 `HitHitError`로 표현)
 - 동의 OFF 시 이벤트 0건이 보장되는가? (회귀 테스트 존재 여부)
 - elementID PII 처리 정책(`ElementIDPolicy`)이 올바르게 적용되는가?
-- 에러 핸들링이 `HeatmapError.Code` 모델을 따르는가?
+- 에러 핸들링이 `HitHitError.Code` 모델을 따르는가?
 - 하드코딩된 문자열/숫자가 없는가?
 - 테스트 코드가 핵심 로직 + 성능 벤치(< 0.5ms)를 커버하는가?
 - ReactorKit, Swinject, 기타 서드파티 의존성 코드가 포함되지 않았는가?
@@ -484,7 +484,7 @@ PHASE 3 완료 직후 반드시 수행합니다.
 | panic 금지(fatalError/강제언래핑 없음) | ✅/⚠️/❌ | |
 | 동의 OFF 회귀 테스트 | ✅/⚠️/❌ | |
 | elementID PII 정책 적용 | ✅/⚠️/❌ | |
-| 에러 핸들링(HeatmapError) | ✅/⚠️/❌ | |
+| 에러 핸들링(HitHitError) | ✅/⚠️/❌ | |
 | 테스트 커버리지(+성능 벤치) | ✅/⚠️/❌ | |
 | 제외 라이브러리/의존성 0 준수 | ✅/⚠️/❌ | |
 
@@ -519,9 +519,9 @@ PASS 시 전체 작업이 완료됩니다.
 
 ### 1. SOLID 원칙
 - **S** (단일 책임): 클래스/구조체/함수는 하나의 책임만 가집니다. 변경 이유가 두 개 이상이면 분리합니다.
-- **O** (개방-폐쇄): 확장에는 열려 있고 수정에는 닫혀 있어야 합니다. 새 기능은 기존 코드 수정 없이 추가합니다. (`HeatmapError.Code`처럼 새 case 추가가 non-breaking이 되도록 설계)
+- **O** (개방-폐쇄): 확장에는 열려 있고 수정에는 닫혀 있어야 합니다. 새 기능은 기존 코드 수정 없이 추가합니다. (`HitHitError.Code`처럼 새 case 추가가 non-breaking이 되도록 설계)
 - **L** (리스코프 치환): 하위 타입은 상위 타입을 완전히 대체할 수 있어야 합니다.
-- **I** (인터페이스 분리): 사용하지 않는 메서드를 강제하는 프로토콜은 분리합니다. (`HeatmapUploader`처럼 단일 책임 프로토콜 유지)
+- **I** (인터페이스 분리): 사용하지 않는 메서드를 강제하는 프로토콜은 분리합니다. (`HitHitUploader`처럼 단일 책임 프로토콜 유지)
 - **D** (의존성 역전): 구체 구현이 아닌 추상(프로토콜)에 의존합니다.
 
 ### 2. 함수형 프로그래밍 활용
@@ -533,7 +533,7 @@ PASS 시 전체 작업이 완료됩니다.
 ### 3. 테스터블한 코드
 - 모든 비즈니스 로직은 외부 의존성 없이 단위 테스트 가능해야 합니다.
 - 의존성은 생성자 주입(constructor injection)으로 전달합니다. 내부에서 직접 생성하지 않습니다.
-- 전역 상태(`HeatmapTracker.shared` 등)는 프로토콜로 추상화하여 테스트 시 대체 가능하게 합니다.
+- 전역 상태(`HitHitTracker.shared` 등)는 프로토콜로 추상화하여 테스트 시 대체 가능하게 합니다.
 - 테스트하기 어려운 코드를 작성했다면 설계를 재검토합니다.
 
 ### 4. 순수 함수 우선
@@ -550,13 +550,13 @@ PASS 시 전체 작업이 완료됩니다.
 ### 6. 중복 코드 헬퍼 추출
 - 동일하거나 유사한 로직이 2곳 이상에 등장하면 즉시 헬퍼 함수/구조체로 추출합니다.
 - 헬퍼는 단일 책임을 가지며, 범용적으로 재사용 가능하도록 설계합니다.
-- 정규화/버킷 계산 헬퍼는 `HeatmapCore`에, UI 헬퍼는 `extension`으로 분리합니다.
+- 정규화/버킷 계산 헬퍼는 `HitHitCore`에, UI 헬퍼는 `extension`으로 분리합니다.
 - "나중에 리팩토링하자"는 없습니다. 중복을 발견한 즉시 추출합니다.
 
 ### 7. POP (Protocol-Oriented Programming) 적극 활용
 - 상속보다 프로토콜 합성(protocol composition)을 우선합니다.
 - 공통 동작은 프로토콜 + `extension` 기본 구현으로 제공합니다.
-- 테스트 시 Mock/Stub은 프로토콜을 채택하는 방식으로 구현합니다. (`HeatmapUploader` mock 등)
+- 테스트 시 Mock/Stub은 프로토콜을 채택하는 방식으로 구현합니다. (`HitHitUploader` mock 등)
 - 구체 타입 대신 프로토콜 타입으로 의존성을 선언합니다.
 - `class` 상속 계층이 깊어지면 프로토콜 분해를 검토합니다.
 

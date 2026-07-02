@@ -76,7 +76,7 @@ flowchart TD
 ## 📁 디렉토리 구조
 
 ```
-Hitmap_Project/
+iOS-HitHit/
 ├── Package.swift                 # SwiftPM: HitHitCore + HitHitKit 2 타겟
 ├── Sources/
 │   ├── HitHitCore/              # 스키마 · 에러 · 정규화(순수)
