@@ -1,9 +1,9 @@
 import Foundation
-@testable import HeatmapKit
-@testable import HeatmapCore
+@testable import HitHitKit
+@testable import HitHitCore
 
 /// 주입용 가짜 전송기(스레드 안전). 결과 스크립트를 순서대로 반환한다.
-final class FakeUploader: HeatmapUploader, @unchecked Sendable {
+final class FakeUploader: HitHitUploader, @unchecked Sendable {
     private let lock = NSLock()
     private var scriptedResults: [Result<Void, Error>]
     private var batches: [Data] = []
@@ -28,11 +28,11 @@ final class FakeUploader: HeatmapUploader, @unchecked Sendable {
 /// 인메모리 이벤트 버퍼(파일 I/O 없이 파이프라인 테스트). POP 덕분에 교체 가능.
 final class FakeBuffer: EventBuffering, @unchecked Sendable {
     private let lock = NSLock()
-    private var events: [HeatmapEvent] = []
+    private var events: [HitHitEvent] = []
 
-    func append(_ event: HeatmapEvent) { lock.lock(); events.append(event); lock.unlock() }
+    func append(_ event: HitHitEvent) { lock.lock(); events.append(event); lock.unlock() }
     func count() -> Int { lock.lock(); defer { lock.unlock() }; return events.count }
-    func loadSpan(max: Int) -> (events: [HeatmapEvent], lineCount: Int) {
+    func loadSpan(max: Int) -> (events: [HitHitEvent], lineCount: Int) {
         lock.lock(); defer { lock.unlock() }
         let span = Array(events.prefix(max))
         return (span, span.count)
@@ -51,8 +51,8 @@ enum TestFiles {
     }
 }
 
-extension HeatmapEvent {
-    static func stubTap(screen: String = "s") -> HeatmapEvent {
+extension HitHitEvent {
+    static func stubTap(screen: String = "s") -> HitHitEvent {
         .tap(screen: screen, x: 0.5, y: 0.5, screenW: 390, screenH: 844,
              device: "iPhone15,3", orientation: .portrait, ts: 1)
     }
@@ -67,7 +67,7 @@ func waitUntil(timeout: TimeInterval = 2, _ condition: @escaping () -> Bool) asy
 }
 
 /// 콜백 기반 flush를 async로 감싸 결과를 반환.
-func awaitFlush(_ pipeline: EventPipeline) async -> Result<Void, HeatmapError> {
+func awaitFlush(_ pipeline: EventPipeline) async -> Result<Void, HitHitError> {
     await withCheckedContinuation { cont in
         pipeline.flush { cont.resume(returning: $0) }
     }

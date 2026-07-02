@@ -1,22 +1,22 @@
 #if canImport(UIKit)
 import UIKit
-import HeatmapCore
+import HitHitCore
 
 /// SDK 공개 진입점. 탭·스크롤을 수집해 서버로 직접 전송한다.
 ///
 /// 연결 예시(SceneDelegate):
 /// ```swift
-/// let cfg = HeatmapConfig(endpoint: URL(string: "https://api.example.com/heatmap")!)
-/// try? HeatmapCollector.shared.start(config: cfg)
-/// HeatmapCollector.shared.setConsent(true)   // 동의 획득 후
+/// let cfg = HitHitConfig(endpoint: URL(string: "https://api.example.com/heatmap")!)
+/// try? HitHitCollector.shared.start(config: cfg)
+/// HitHitCollector.shared.setConsent(true)   // 동의 획득 후
 /// ```
 /// 화면 전환 시 `setScreen(_:)`, 스크롤뷰는 `track(scrollView:)`로 등록한다.
 ///
 /// 스레드 안전: public 메서드는 어느 스레드에서나 호출 가능(내부 상태는 lock으로 보호).
 /// 단 `track`/`setScreen`은 UIKit 접근이 있어 메인 스레드 호출을 권장한다.
-public final class HeatmapCollector {
+public final class HitHitCollector {
 
-    public static let shared = HeatmapCollector()
+    public static let shared = HitHitCollector()
 
     // 아래 mutable 상태는 모두 `lock`으로 보호한다(메인 sendEvent 경로 ↔ start/stop 레이스 방지).
     private let lock = NSLock()
@@ -33,10 +33,10 @@ public final class HeatmapCollector {
     // MARK: - Lifecycle
 
     /// 수집을 시작한다. 동의는 별도로 `setConsent(true)`가 필요하다(기본 OFF).
-    public func start(config: HeatmapConfig) throws {
+    public func start(config: HitHitConfig) throws {
         lock.lock()
         defer { lock.unlock() }
-        guard !_isRunning else { throw HeatmapError.alreadyRunning() }
+        guard !_isRunning else { throw HitHitError.alreadyRunning() }
 
         let fileURL = try Self.resolveStorageURL(config.storageDirectory)
         let store = EventStore(fileURL: fileURL)
@@ -89,9 +89,9 @@ public final class HeatmapCollector {
 
     // MARK: - Flush
 
-    public func flush(completion: ((Result<Void, HeatmapError>) -> Void)? = nil) {
+    public func flush(completion: ((Result<Void, HitHitError>) -> Void)? = nil) {
         guard let pipeline = currentPipeline() else {
-            completion?(.failure(HeatmapError.notConfigured()))
+            completion?(.failure(HitHitError.notConfigured()))
             return
         }
         pipeline.flush(completion: completion)
@@ -159,9 +159,9 @@ public final class HeatmapCollector {
         } else {
             guard let caches = FileManager.default.urls(
                 for: .cachesDirectory, in: .userDomainMask).first else {
-                throw HeatmapError.storageUnavailable(CocoaError(.fileNoSuchFile))
+                throw HitHitError.storageUnavailable(CocoaError(.fileNoSuchFile))
             }
-            dir = caches.appendingPathComponent("HeatmapKit", isDirectory: true)
+            dir = caches.appendingPathComponent("HitHitKit", isDirectory: true)
         }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir.appendingPathComponent("events.jsonl")
@@ -176,7 +176,7 @@ public final class HeatmapCollector {
                 .flatMap { $0.windows }
                 .contains { $0 is TrackingWindow }
             if !hasTrackingWindow {
-                print("⚠️ [HeatmapKit] TrackingWindow가 설치되지 않았습니다. 탭이 수집되지 않습니다. " +
+                print("⚠️ [HitHitKit] TrackingWindow가 설치되지 않았습니다. 탭이 수집되지 않습니다. " +
                       "SceneDelegate에서 window를 TrackingWindow로 교체하세요.")
             }
         }

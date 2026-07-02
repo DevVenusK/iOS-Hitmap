@@ -1,5 +1,5 @@
 import Testing
-@testable import HeatmapKit
+@testable import HitHitKit
 
 @Suite struct CollectionGateTests {
 

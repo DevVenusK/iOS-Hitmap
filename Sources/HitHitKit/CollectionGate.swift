@@ -1,5 +1,5 @@
 import Foundation
-import HeatmapCore
+import HitHitCore
 
 /// 이벤트를 수집해도 되는지 결정하는 **순수 로직**.
 ///

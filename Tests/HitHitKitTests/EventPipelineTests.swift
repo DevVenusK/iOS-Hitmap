@@ -1,18 +1,18 @@
 import Testing
 import Foundation
-@testable import HeatmapKit
-@testable import HeatmapCore
+@testable import HitHitKit
+@testable import HitHitCore
 
 @Suite struct EventPipelineTests {
 
     /// 기본은 `.batched`(대용량)로 두어 이벤트가 버퍼에 남아 게이팅을 관측할 수 있게 한다.
     private func makePipeline(
-        configure: (inout HeatmapConfig) -> Void = { _ in },
-        uploader: HeatmapUploader = FakeUploader(),
+        configure: (inout HitHitConfig) -> Void = { _ in },
+        uploader: HitHitUploader = FakeUploader(),
         buffer: FakeBuffer = FakeBuffer(),
         sampler: @escaping () -> Double = { 0.0 }
     ) -> (EventPipeline, FakeBuffer) {
-        var config = HeatmapConfig(endpoint: URL(string: "https://example.com")!)
+        var config = HitHitConfig(endpoint: URL(string: "https://example.com")!)
         config.uploadStrategy = .batched(maxSize: 1_000_000, interval: 3600)
         configure(&config)
         let pipeline = EventPipeline(

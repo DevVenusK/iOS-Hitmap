@@ -1,7 +1,7 @@
 import Testing
 import Foundation
-@testable import HeatmapKit
-@testable import HeatmapCore
+@testable import HitHitKit
+@testable import HitHitCore
 
 /// URLProtocol 스텁 — 요청마다 스크립트된 상태코드를 반환한다.
 final class StubURLProtocol: URLProtocol {
@@ -77,7 +77,7 @@ final class StubURLProtocol: URLProtocol {
         let result = await upload(makeUploader(maxRetries: 2))
         #expect(result.isFailure)
         if case .failure(let error) = result {
-            #expect((error as? HeatmapError)?.code == .uploadFailed)
+            #expect((error as? HitHitError)?.code == .uploadFailed)
         }
         #expect(StubURLProtocol.currentCallCount() == 3)   // 최초 1 + 재시도 2
     }

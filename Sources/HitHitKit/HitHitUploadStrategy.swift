@@ -4,7 +4,7 @@ import Foundation
 ///
 /// 어느 전략이든 로컬 저장은 **영구 저장소가 아니라 전송 실패/오프라인 대비 임시 버퍼**이며,
 /// 업로드 성공 즉시 비워진다. 서버가 데이터의 원본(source of truth)이다.
-public enum HeatmapUploadStrategy: Equatable {
+public enum HitHitUploadStrategy: Equatable {
 
     /// 이벤트 발생 즉시 서버로 전송한다(기본).
     ///
@@ -17,10 +17,10 @@ public enum HeatmapUploadStrategy: Equatable {
     case batched(maxSize: Int, interval: TimeInterval)
 
     /// 30초 / 500건 배치.
-    public static let defaultBatched = HeatmapUploadStrategy.batched(maxSize: 500, interval: 30)
+    public static let defaultBatched = HitHitUploadStrategy.batched(maxSize: 500, interval: 30)
 }
 
-extension HeatmapUploadStrategy {
+extension HitHitUploadStrategy {
     /// 주기 타이머 간격. `.immediate`도 실패/오프라인분을 주기적으로 재시도하기 위해 스윕한다.
     var timerInterval: TimeInterval {
         switch self {

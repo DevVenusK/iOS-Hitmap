@@ -1,7 +1,7 @@
-# 백로그/우선순위: HeatmapKit 1.0
+# 백로그/우선순위: HitHitKit 1.0
 
 > 작성: po-team (🔴김PO·🟡이PO·🟢박PO) | 2026-07-01
-> 인풋: `docs/sdk-spec/heatmapkit.md`(CTO 컨펌 스펙) + 의뢰 회신 3건(`docs/po/consults/`)
+> 인풋: `docs/sdk-spec/hithitkit.md`(CTO 컨펌 스펙) + 의뢰 회신 3건(`docs/po/consults/`)
 > 아웃컴 축: **채택(Adoption) · 인사이트(Insight) · 신뢰(Trust)** — 신뢰 깨지면 채택 0, 채택 0이면 인사이트 0
 
 ## 통합 RICE 입력 (출처 명시)
@@ -14,7 +14,7 @@
 | A3 PrivacyManifest(권장) | 5 | 1 | 1.0 | S(1) | **5.0** | 4 | 정정 2026-07-01 | 없음 |
 | A5 QuickStart+비스위즐 | 8 | 2 | 0.9 | M(3) | **4.8** | 5 | spec§10 | 없음 |
 | A8 reference uploader | 7 | 1 | 0.7 | M(2) | **2.45** | 6 | po PHASE1 | 없음(샘플) |
-| A7 HeatmapViz 렌더러 | 5 | 2.5 | 0.7 | L(5) | **1.75** | 7 | designer | 없음(옵셔널 타겟) |
+| A7 HitHitViz 렌더러 | 5 | 2.5 | 0.7 | L(5) | **1.75** | 7 | designer | 없음(옵셔널 타겟) |
 | A9 CocoaPods | 3 | 1 | 0.5 | M(2) | **0.75** | 8 | ios-team | 없음 |
 | ~~A4 elementID PII~~ | — | — | — | — | **삭제** | — | v1 스코프 | elementID 미수집으로 소멸 |
 
@@ -47,7 +47,7 @@
 - ~~A4 elementID PII~~ — v1이 elementID를 아예 미수집하므로 소멸. 관련 법무 L-1~L-5도 대부분 불필요.
 
 ### NEXT — 1.0+ (인사이트)
-- A7 HeatmapViz 렌더러 (탭/스크롤, 디바이스 버킷 집계). 옵셔널 필드 추가는 non-breaking.
+- A7 HitHitViz 렌더러 (탭/스크롤, 디바이스 버킷 집계). 옵셔널 필드 추가는 non-breaking.
 - A8 reference uploader 샘플 (통합 마찰 감소)
 - (필요시) sessionID / sequenceIndex 옵셔널 필드 추가 — 분석가 퍼널/이탈 요구 확인 후
 

@@ -4,7 +4,7 @@
 > 응답: Security Team (🔴 Senior 한시니어 · 🟡 Mid 이미드 · 🟢 Junior 박주니어)
 > 응답일: 2026-07-01
 > 범위: RICE **Confidence** 입력 확정 + 1.0 수집 시작 전 프라이버시 정책 결론 (보안 엔지니어링 포지션)
-> 입력 문서: `docs/sdk-spec/heatmapkit.md` §4.2(ElementIDPolicy), §4.4(에러 모델), §11(보안/안전성), §12(미결사항 #4)
+> 입력 문서: `docs/sdk-spec/hithitkit.md` §4.2(ElementIDPolicy), §4.4(에러 모델), §11(보안/안전성), §12(미결사항 #4)
 > 원칙: **모든 통제는 "어떤 위협을 막는지"를 명시한다.** 컴플라이언스는 floor(최저선)이지 ceiling이 아니며, 법적 최종 분류는 법무 escalation으로 분리한다.
 
 ---

@@ -2,7 +2,7 @@
 
 > 요청자: po-team (SDK 백로그 RICE 산정용 엔지니어링 데이터 요청)
 > 회신자: iOS팀 (Senior 이시니어 · Mid 박미드 · Junior 최주니어)
-> 근거 문서: `docs/sdk-spec/heatmapkit.md` (v1.0, CTO APPROVED 2026-07-01)
+> 근거 문서: `docs/sdk-spec/hithitkit.md` (v1.0, CTO APPROVED 2026-07-01)
 > 작성일: 2026-07-01
 
 ---
@@ -42,7 +42,7 @@
 ### Effort: **M** (Medium)
 
 **근거**
-- SwiftPM 구조가 이미 3타겟(HeatmapCore/HeatmapKit/HeatmapViz) + 2프로덕트로 명확히 분리돼 있어(스펙 8번), podspec은 이를 subspec(Core/Collection/Viz)으로 매핑하면 됨 — 구조 설계 비용은 거의 없음.
+- SwiftPM 구조가 이미 3타겟(HitHitCore/HitHitKit/HitHitViz) + 2프로덕트로 명확히 분리돼 있어(스펙 8번), podspec은 이를 subspec(Core/Collection/Viz)으로 매핑하면 됨 — 구조 설계 비용은 거의 없음.
 - 서드파티 의존성이 0이라(스펙 7번) podspec 의존성 선언이 단순함.
 - 다만 `pod lib lint` CI 매트릭스 추가, 두 패키지 매니저 동시 릴리즈 프로세스(태그 푸시 시 SwiftPM/CocoaPods 버전 동기화) 자동화까지 포함하면 일회성 구현보다 운영 설계 비용이 더 큼 → S가 아니라 M.
 
@@ -64,7 +64,7 @@
 
 ### 3-1. Finda min iOS 버전
 **가정**: iOS 14+ (스펙 3번 지원 매트릭스에 명시된 값을 그대로 차용)
-**확인 필요(→Finda iOS팀)**: 이 값은 HeatmapKit 스펙 작성 시점의 가정이며, Finda 앱의 실제 Deployment Target을 iOS팀이 직접 확인한 적은 없음. RICE의 Reach/Effort 계산에 실제 값을 반영하려면 Finda iOS팀에 현재 Xcode 프로젝트의 `IPHONEOS_DEPLOYMENT_TARGET` 값을 직접 확인 요청해야 함.
+**확인 필요(→Finda iOS팀)**: 이 값은 HitHitKit 스펙 작성 시점의 가정이며, Finda 앱의 실제 Deployment Target을 iOS팀이 직접 확인한 적은 없음. RICE의 Reach/Effort 계산에 실제 값을 반영하려면 Finda iOS팀에 현재 Xcode 프로젝트의 `IPHONEOS_DEPLOYMENT_TARGET` 값을 직접 확인 요청해야 함.
 
 ### 3-2. 패키지 매니저 1차 선택
 **1차: SwiftPM(P0), CocoaPods는 병행(P1)** — 스펙 3번 지원 매트릭스 기준.

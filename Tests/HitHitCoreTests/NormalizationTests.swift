@@ -1,5 +1,5 @@
 import Testing
-@testable import HeatmapCore
+@testable import HitHitCore
 
 @Suite struct NormalizationTests {
 

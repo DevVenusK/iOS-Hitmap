@@ -1,11 +1,11 @@
 import Testing
 import Foundation
-@testable import HeatmapCore
+@testable import HitHitCore
 
-@Suite struct HeatmapEventTests {
+@Suite struct HitHitEventTests {
 
     @Test func tapFactoryLeavesScrollFieldsNil() {
-        let e = HeatmapEvent.tap(
+        let e = HitHitEvent.tap(
             screen: "loan_detail", x: 0.42, y: 0.73,
             screenW: 390, screenH: 844, device: "iPhone15,3",
             orientation: .portrait, ts: 1_719_800_000_000)
@@ -13,11 +13,11 @@ import Foundation
         #expect(e.x == 0.42)
         #expect(e.scrollDepth == nil)
         #expect(e.scrollOffsetY == nil)
-        #expect(e.schemaVersion == HeatmapEvent.currentSchemaVersion)
+        #expect(e.schemaVersion == HitHitEvent.currentSchemaVersion)
     }
 
     @Test func scrollFactoryLeavesTapFieldsNil() {
-        let e = HeatmapEvent.scroll(
+        let e = HitHitEvent.scroll(
             screen: "loan_detail", scrollDepth: 0.65, scrollOffsetY: 1240,
             screenW: 390, screenH: 844, device: "iPhone15,3",
             orientation: .portrait, ts: 1)
@@ -28,22 +28,22 @@ import Foundation
     }
 
     @Test func codableRoundTripIsLossless() throws {
-        let e = HeatmapEvent.tap(
+        let e = HitHitEvent.tap(
             screen: "home", x: 0.1, y: 0.2, screenW: 390, screenH: 844,
             device: "iPhone15,3", orientation: .portrait, ts: 42)
         let data = try JSONEncoder().encode(e)
-        let decoded = try JSONDecoder().decode(HeatmapEvent.self, from: data)
+        let decoded = try JSONDecoder().decode(HitHitEvent.self, from: data)
         #expect(decoded == e)
     }
 
     @Test func eachEventHasUniqueId() {
-        let a = HeatmapEvent.stubTapCore()
-        let b = HeatmapEvent.stubTapCore()
+        let a = HitHitEvent.stubTapCore()
+        let b = HitHitEvent.stubTapCore()
         #expect(a.id != b.id)
     }
 
     @Test func wireContractContainsAllFields() throws {
-        let e = HeatmapEvent.scroll(
+        let e = HitHitEvent.scroll(
             screen: "s", scrollDepth: 0.5, scrollOffsetY: 100,
             screenW: 390, screenH: 844, device: "iPhone15,3",
             orientation: .portrait, ts: 7)
@@ -63,14 +63,14 @@ import Foundation
          "screenW":390,"screenH":844,"device":"iPhone15,3",
          "orientation":"portrait","ts":1,"futureField":"ignored"}
         """.data(using: .utf8)!
-        let decoded = try JSONDecoder().decode(HeatmapEvent.self, from: json)
+        let decoded = try JSONDecoder().decode(HitHitEvent.self, from: json)
         #expect(decoded.screen == "x")
         #expect(!decoded.id.isEmpty)   // 누락 시 자동 생성
     }
 }
 
-private extension HeatmapEvent {
-    static func stubTapCore() -> HeatmapEvent {
+private extension HitHitEvent {
+    static func stubTapCore() -> HitHitEvent {
         .tap(screen: "s", x: 0.5, y: 0.5, screenW: 390, screenH: 844,
              device: "d", orientation: .portrait, ts: 1)
     }

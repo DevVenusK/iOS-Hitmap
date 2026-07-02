@@ -1,8 +1,8 @@
 import Foundation
-import HeatmapCore
+import HitHitCore
 
 /// 수집·전송 동작을 제어하는 설정.
-public struct HeatmapConfig {
+public struct HitHitConfig {
 
     /// **서버 엔드포인트(수집 데이터 전송 대상 URL).** 데이터의 원본은 이 서버다.
     public var endpoint: URL
@@ -18,11 +18,11 @@ public struct HeatmapConfig {
     /// false면 `track(scrollView:)`로 명시 등록한 것만 추적.
     public var autoTrackScrollViews: Bool
     /// 서버 전송 전략. 기본 `.immediate`(발생 즉시 전송, 로컬은 실패 대비 임시 버퍼).
-    public var uploadStrategy: HeatmapUploadStrategy
+    public var uploadStrategy: HitHitUploadStrategy
     /// 실패/오프라인 대비 임시 버퍼 위치. nil이면 앱 caches.
     public var storageDirectory: URL?
     /// 커스텀 전송기. nil이면 내장 HTTP 전송기 사용.
-    public var uploader: HeatmapUploader?
+    public var uploader: HitHitUploader?
 
     public init(endpoint: URL) {
         self.endpoint = endpoint

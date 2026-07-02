@@ -1,6 +1,6 @@
 #if canImport(UIKit)
 import UIKit
-import HeatmapCore
+import HitHitCore
 
 /// 등록된 스크롤뷰들을 `CADisplayLink`로 샘플링해 스크롤 깊이를 수집한다.
 ///

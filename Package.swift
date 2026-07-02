@@ -2,27 +2,27 @@
 import PackageDescription
 
 let package = Package(
-    name: "HeatmapKit",
+    name: "HitHitKit",
     platforms: [.iOS(.v14), .macOS(.v11)],
     products: [
-        .library(name: "HeatmapCore", targets: ["HeatmapCore"]),
-        .library(name: "HeatmapKit", targets: ["HeatmapKit"]),
+        .library(name: "HitHitCore", targets: ["HitHitCore"]),
+        .library(name: "HitHitKit", targets: ["HitHitKit"]),
     ],
     targets: [
         .target(
-            name: "HeatmapCore"
+            name: "HitHitCore"
         ),
         .target(
-            name: "HeatmapKit",
-            dependencies: ["HeatmapCore"]
+            name: "HitHitKit",
+            dependencies: ["HitHitCore"]
         ),
         .testTarget(
-            name: "HeatmapCoreTests",
-            dependencies: ["HeatmapCore"]
+            name: "HitHitCoreTests",
+            dependencies: ["HitHitCore"]
         ),
         .testTarget(
-            name: "HeatmapKitTests",
-            dependencies: ["HeatmapKit"]
+            name: "HitHitKitTests",
+            dependencies: ["HitHitKit"]
         ),
     ]
 )

@@ -1,7 +1,7 @@
-# SDK Spec: HeatmapKit (iOS UX Heatmap Analytics SDK)
+# SDK Spec: HitHitKit (iOS UX HitHit Analytics SDK)
 
 > Status: APPROVED by CTO (2026-07-01) — PHASE 3 ready
-> CTO 조건 3건 반영 완료: (1) HeatmapError struct+code, (2) 성능 예산, (3) 프라이버시 기본 OFF + elementID PII 처리
+> CTO 조건 3건 반영 완료: (1) HitHitError struct+code, (2) 성능 예산, (3) 프라이버시 기본 OFF + elementID PII 처리
 > Obj-C 지원은 1.0 scope 제외(미래 과제)
 
 ## 1. 개요
@@ -29,8 +29,8 @@
 ## 3. 지원 매트릭스
 | 소비자 언어 | 패키지 | 최소 버전 | 우선순위 |
 |---|---|---|---|
-| Swift | SwiftPM `HeatmapKit` | iOS 14 / Swift 5.9 | P0 |
-| Swift | CocoaPods `HeatmapKit.podspec` | iOS 14 | P1 |
+| Swift | SwiftPM `HitHitKit` | iOS 14 / Swift 5.9 | P0 |
+| Swift | CocoaPods `HitHitKit.podspec` | iOS 14 | P1 |
 
 | 플랫폼 | 지원 | 비고 |
 |---|---|---|
@@ -41,12 +41,12 @@
 
 ## 4. Public API 설계
 
-### 4.1 핵심 진입점 (HeatmapKit)
+### 4.1 핵심 진입점 (HitHitKit)
 ```swift
-public final class HeatmapTracker {
-    public static let shared: HeatmapTracker
+public final class HitHitTracker {
+    public static let shared: HitHitTracker
 
-    public func start(config: HeatmapConfig) throws
+    public func start(config: HitHitConfig) throws
     public func stop()
     public var isRunning: Bool { get }
 
@@ -63,13 +63,13 @@ public final class HeatmapTracker {
     public func untrack(scrollView: UIScrollView)
 
     // 배치 강제 flush
-    public func flush(completion: ((Result<Void, HeatmapError>) -> Void)?)
+    public func flush(completion: ((Result<Void, HitHitError>) -> Void)?)
 }
 ```
 
 ### 4.2 설정
 ```swift
-public struct HeatmapConfig {
+public struct HitHitConfig {
     public var excludedScreenIDs: Set<String>
     public var excludedElementIDs: Set<String>
     public var elementIDPolicy: ElementIDPolicy   // PII 처리 (CTO 조건 3)
@@ -78,7 +78,7 @@ public struct HeatmapConfig {
     public var autoTrackScrollViews: Bool         // 기본 false (스위즐 옵트인)
     public var maxBatchSize: Int                  // 기본 500
     public var storageDirectory: URL?
-    public var uploader: HeatmapUploader?
+    public var uploader: HitHitUploader?
     public init()
 }
 
@@ -92,7 +92,7 @@ public enum ElementIDPolicy: Sendable {
 
 ### 4.3 업로더 (전송 책임 분리)
 ```swift
-public protocol HeatmapUploader: AnyObject {
+public protocol HitHitUploader: AnyObject {
     func upload(batch: Data, schemaVersion: Int,
                 completion: @escaping (Result<Void, Error>) -> Void)
 }
@@ -101,7 +101,7 @@ public protocol HeatmapUploader: AnyObject {
 ### 4.4 에러 모델 — struct + Int code (CTO 조건 1)
 ```swift
 /// 향후 case 추가가 breaking change가 되지 않도록 enum 대신 struct + code.
-public struct HeatmapError: Error, Equatable, Sendable {
+public struct HitHitError: Error, Equatable, Sendable {
     public struct Code: RawRepresentable, Hashable, Sendable {
         public let rawValue: Int
         public init(rawValue: Int) { self.rawValue = rawValue }
@@ -120,36 +120,36 @@ public struct HeatmapError: Error, Equatable, Sendable {
 ```
 > 소비자는 `error.code == .storageUnavailable` 형태로 비교. 미지 코드는 default 처리.
 
-### 4.5 렌더링 API (HeatmapViz 타겟, 옵셔널)
+### 4.5 렌더링 API (HitHitViz 타겟, 옵셔널)
 ```swift
-public struct HeatmapRenderRequest {
+public struct HitHitRenderRequest {
     public var screenID: String
     public var deviceClass: DeviceClass
-    public var orientation: HeatmapOrientation
+    public var orientation: HitHitOrientation
     public var background: CGImage?      // 기준 스크린샷(민감화면 제외)
     public var size: CGSize
     public var radius: CGFloat           // 기본 24
     public var intensity: CGFloat        // 기본 0.6
     public init(screenID: String, deviceClass: DeviceClass,
-                orientation: HeatmapOrientation, size: CGSize)
+                orientation: HitHitOrientation, size: CGSize)
 }
 
-public struct HeatmapRenderer {
+public struct HitHitRenderer {
     public init()
-    public func renderTaps(_ request: HeatmapRenderRequest,
+    public func renderTaps(_ request: HitHitRenderRequest,
                            from events: [TouchEvent]) throws -> CGImage
-    public func renderScroll(_ request: HeatmapRenderRequest,
+    public func renderScroll(_ request: HitHitRenderRequest,
                              from events: [ScrollEvent]) throws -> CGImage
 }
 ```
 
-### 4.6 공유 스키마 (HeatmapCore — wire format, semver 핵심 계약)
+### 4.6 공유 스키마 (HitHitCore — wire format, semver 핵심 계약)
 ```swift
 public struct DeviceClass: Hashable, Codable, Sendable {
     public let shortSide: Int
     public let longSide: Int
 }
-public enum HeatmapOrientation: String, Codable, Sendable { case portrait, landscape }
+public enum HitHitOrientation: String, Codable, Sendable { case portrait, landscape }
 
 public struct TouchEvent: Codable, Sendable {
     public let schemaVersion: Int        // 현재 1
@@ -158,7 +158,7 @@ public struct TouchEvent: Codable, Sendable {
     public let nx: Double                 // 0...1 정규화 X
     public let ny: Double                 // 0...1 정규화 Y
     public let deviceClass: DeviceClass
-    public let orientation: HeatmapOrientation
+    public let orientation: HitHitOrientation
     public let timestamp: TimeInterval
 }
 
@@ -169,7 +169,7 @@ public struct ScrollEvent: Codable, Sendable {
     public let maxDepth: Double          // 0...1 최대 도달 깊이
     public let dwellByBucket: [Double]   // 깊이 버킷별 체류 초
     public let deviceClass: DeviceClass
-    public let orientation: HeatmapOrientation
+    public let orientation: HitHitOrientation
     public let timestamp: TimeInterval
 }
 ```
@@ -179,12 +179,12 @@ public struct ScrollEvent: Codable, Sendable {
 - 수집은 fire-and-forget. 내부 저장/인코딩은 전용 serial `DispatchQueue`.
 
 ## 4.8 스레드 안전성
-- `HeatmapTracker.shared`: thread-safe(내부 직렬 큐). `track`/`beginScreen`은 메인 스레드 권장.
-- `HeatmapRenderer`: stateless, 인스턴스별 사용. 메인 밖 호출 권장.
+- `HitHitTracker.shared`: thread-safe(내부 직렬 큐). `track`/`beginScreen`은 메인 스레드 권장.
+- `HitHitRenderer`: stateless, 인스턴스별 사용. 메인 밖 호출 권장.
 - 이벤트 값 타입: `Sendable`.
 
 ## 4.9 메모리 / 소유권
-- `HeatmapUploader` weak 보관. 추적 `UIScrollView` weak — dealloc 시 자동 untrack.
+- `HitHitUploader` weak 보관. 추적 `UIScrollView` weak — dealloc 시 자동 untrack.
 
 ## 5. 성능 예산 (CTO 조건 2 — 1급 항목)
 | 항목 | 목표 | 검증 |
@@ -205,21 +205,21 @@ public struct ScrollEvent: Codable, Sendable {
 | 의존성 | 사유 | 필수/feature | 라이선스 |
 |---|---|---|---|
 | Foundation | 기본 | 필수 | Apple |
-| UIKit | 터치/스크롤/뷰 | 필수(HeatmapKit) | Apple |
-| CoreImage/CoreGraphics | 렌더 | 필수(HeatmapViz) | Apple |
+| UIKit | 터치/스크롤/뷰 | 필수(HitHitKit) | Apple |
+| CoreImage/CoreGraphics | 렌더 | 필수(HitHitViz) | Apple |
 | 서드파티 | — | **없음** | — |
 
 ## 8. 빌드 / 패키징
-- SwiftPM: 1 패키지, 3 타겟(HeatmapCore/HeatmapKit/HeatmapViz), 2 프로덕트.
-- CocoaPods: `HeatmapKit.podspec` subspec Core/Collection/Viz.
+- SwiftPM: 1 패키지, 3 타겟(HitHitCore/HitHitKit/HitHitViz), 2 프로덕트.
+- CocoaPods: `HitHitKit.podspec` subspec Core/Collection/Viz.
 - 리소스 0(컬러맵 코드 생성).
 - CI: GitHub Actions 매트릭스(Xcode 15/16 × iOS 14/15/17), `swift test`, DocC, `pod lib lint`, 마이크로벤치.
 
 ## 9. 테스트 전략
-- HeatmapCore: 정규화, 버킷, Codable round-trip, schemaVersion forward-compat.
-- HeatmapKit: 제외 리스트, 샘플링, 동의 게이트, scrollView weak untrack, elementID policy.
+- HitHitCore: 정규화, 버킷, Codable round-trip, schemaVersion forward-compat.
+- HitHitKit: 제외 리스트, 샘플링, 동의 게이트, scrollView weak untrack, elementID policy.
 - **동의 OFF → 이벤트 0건 회귀 테스트 = 릴리즈 게이트.**
-- HeatmapViz: 픽셀 스냅샷.
+- HitHitViz: 픽셀 스냅샷.
 - 성능: 마이크로벤치(터치당 < 0.5ms).
 
 ## 10. 문서화
@@ -229,7 +229,7 @@ public struct ScrollEvent: Codable, Sendable {
 - 샘플 앱(탭/스크롤 데모 + 인앱 뷰어 #Preview).
 
 ## 11. 보안 / 안전성 (CTO 조건 3)
-- panic 금지: fatalError/강제 unwrap 없음. 모든 실패 = HeatmapError.
+- panic 금지: fatalError/강제 unwrap 없음. 모든 실패 = HitHitError.
 - **동의 기본 OFF, 수집 기본 차단**(fail-safe).
 - 민감화면: 제외 스크린 수집·배경 캡처 모두 차단.
 - **elementID PII 처리**: 기본 `.hashed`, `.drop`/`.allowlist` 선택.

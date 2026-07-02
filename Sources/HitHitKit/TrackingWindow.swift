@@ -1,6 +1,6 @@
 #if canImport(UIKit)
 import UIKit
-import HeatmapCore
+import HitHitCore
 
 /// 전역 탭 인터셉트용 `UIWindow` 서브클래스.
 ///
@@ -30,7 +30,7 @@ public final class TrackingWindow: UIWindow {
         case .began:
             beganLocations[key] = touch.location(in: self)
             // 스크롤뷰 안에서 시작된 터치면 그 스크롤뷰를 자동 등록(스위즐 아님).
-            HeatmapCollector.shared.noteTouch(on: touch.view)
+            HitHitCollector.shared.noteTouch(on: touch.view)
         case .ended:
             defer { beganLocations[key] = nil }
             guard let start = beganLocations[key] else { return }
@@ -40,7 +40,7 @@ public final class TrackingWindow: UIWindow {
                 toX: Double(end.x), toY: Double(end.y),
                 threshold: tapSlop
             ) else { return }   // 많이 움직임 → 스크롤/드래그, 무시
-            HeatmapCollector.shared.handleTap(at: start, in: self)
+            HitHitCollector.shared.handleTap(at: start, in: self)
         case .cancelled:
             beganLocations[key] = nil
         default:

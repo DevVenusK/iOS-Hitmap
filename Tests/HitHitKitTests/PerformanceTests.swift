@@ -1,7 +1,7 @@
 import Testing
 import Foundation
-@testable import HeatmapKit
-@testable import HeatmapCore
+@testable import HitHitKit
+@testable import HitHitCore
 
 /// 성능 예산(A1) 회귀 가드. 병렬 실행의 타이밍 노이즈를 줄이기 위해 직렬.
 ///
@@ -24,7 +24,7 @@ import Foundation
     }
 
     @Test func recordTapEnqueueUnderBudget() {
-        var config = HeatmapConfig(endpoint: URL(string: "https://example.com")!)
+        var config = HitHitConfig(endpoint: URL(string: "https://example.com")!)
         config.uploadStrategy = .batched(maxSize: 1_000_000, interval: 3600) // 전송 부하 배제
         let buffer = FakeBuffer()
         let pipeline = EventPipeline(

@@ -1,5 +1,5 @@
 import Foundation
-import HeatmapCore
+import HitHitCore
 
 /// JSONL 파일 기반 임시 버퍼. 전용 직렬 큐로 스레드 안전을 보장한다.
 ///
@@ -8,7 +8,7 @@ import HeatmapCore
 /// `count()`는 매 이벤트마다 호출될 수 있어 **캐시로 O(1)** 유지(파일 재파싱 금지).
 final class EventStore: EventBuffering {
 
-    private let queue = DispatchQueue(label: "co.finda.heatmap.store")
+    private let queue = DispatchQueue(label: "co.finda.hithit.store")
     private let fileURL: URL
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
@@ -26,7 +26,7 @@ final class EventStore: EventBuffering {
     }
 
     /// 이벤트 한 건을 파일 끝에 append. **쓰기 성공 시에만** 카운트를 올린다.
-    func append(_ event: HeatmapEvent) {
+    func append(_ event: HitHitEvent) {
         queue.sync {
             guard var data = try? encoder.encode(event) else { return }
             data.append(0x0A) // "\n"
@@ -41,9 +41,9 @@ final class EventStore: EventBuffering {
     }
 
     /// 앞에서부터 최대 `max`건 디코딩해 반환.
-    func loadBatch(max: Int) -> [HeatmapEvent] {
+    func loadBatch(max: Int) -> [HitHitEvent] {
         queue.sync {
-            lines().prefix(max).compactMap { try? decoder.decode(HeatmapEvent.self, from: $0) }
+            lines().prefix(max).compactMap { try? decoder.decode(HitHitEvent.self, from: $0) }
         }
     }
 
@@ -51,10 +51,10 @@ final class EventStore: EventBuffering {
     ///
     /// 디코딩 실패(잘림/손상) 라인은 events에서 빠지지만 `lineCount`에는 포함된다 →
     /// 호출자가 `removeFirst(lineCount)`로 지우면 손상 라인도 함께 정리돼 정렬 어긋남/중복 전송이 없다.
-    func loadSpan(max: Int) -> (events: [HeatmapEvent], lineCount: Int) {
+    func loadSpan(max: Int) -> (events: [HitHitEvent], lineCount: Int) {
         queue.sync {
             let span = Array(lines().prefix(max))
-            let events = span.compactMap { try? decoder.decode(HeatmapEvent.self, from: $0) }
+            let events = span.compactMap { try? decoder.decode(HitHitEvent.self, from: $0) }
             return (events, span.count)
         }
     }

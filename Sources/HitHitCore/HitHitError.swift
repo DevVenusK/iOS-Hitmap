@@ -2,7 +2,7 @@ import Foundation
 
 /// SDK 공개 에러. enum이 아니라 struct + code로 설계해, 향후 코드 추가가
 /// breaking change가 되지 않도록 한다(소비자는 `error.code == .xxx`로 비교).
-public struct HeatmapError: Error, Equatable, Sendable {
+public struct HitHitError: Error, Equatable, Sendable {
 
     /// 에러 코드. 신규 코드는 새 rawValue 추가만으로 non-breaking 확장.
     public struct Code: RawRepresentable, Hashable, Sendable {
@@ -27,25 +27,25 @@ public struct HeatmapError: Error, Equatable, Sendable {
         self.underlying = underlying
     }
 
-    public static func == (lhs: HeatmapError, rhs: HeatmapError) -> Bool {
+    public static func == (lhs: HitHitError, rhs: HitHitError) -> Bool {
         lhs.code == rhs.code && lhs.message == rhs.message
     }
 }
 
-public extension HeatmapError {
-    static func notConfigured() -> HeatmapError {
-        HeatmapError(code: .notConfigured, message: "HeatmapCollector.start(config:)가 먼저 호출되어야 합니다.")
+public extension HitHitError {
+    static func notConfigured() -> HitHitError {
+        HitHitError(code: .notConfigured, message: "HitHitCollector.start(config:)가 먼저 호출되어야 합니다.")
     }
-    static func alreadyRunning() -> HeatmapError {
-        HeatmapError(code: .alreadyRunning, message: "이미 실행 중입니다.")
+    static func alreadyRunning() -> HitHitError {
+        HitHitError(code: .alreadyRunning, message: "이미 실행 중입니다.")
     }
-    static func storageUnavailable(_ underlying: Error) -> HeatmapError {
-        HeatmapError(code: .storageUnavailable, message: "로컬 저장소에 접근할 수 없습니다.", underlying: underlying)
+    static func storageUnavailable(_ underlying: Error) -> HitHitError {
+        HitHitError(code: .storageUnavailable, message: "로컬 저장소에 접근할 수 없습니다.", underlying: underlying)
     }
-    static func encodingFailed(_ underlying: Error) -> HeatmapError {
-        HeatmapError(code: .encodingFailed, message: "이벤트 인코딩에 실패했습니다.", underlying: underlying)
+    static func encodingFailed(_ underlying: Error) -> HitHitError {
+        HitHitError(code: .encodingFailed, message: "이벤트 인코딩에 실패했습니다.", underlying: underlying)
     }
-    static func uploadFailed(_ underlying: Error?) -> HeatmapError {
-        HeatmapError(code: .uploadFailed, message: "배치 전송에 실패했습니다.", underlying: underlying)
+    static func uploadFailed(_ underlying: Error?) -> HitHitError {
+        HitHitError(code: .uploadFailed, message: "배치 전송에 실패했습니다.", underlying: underlying)
     }
 }

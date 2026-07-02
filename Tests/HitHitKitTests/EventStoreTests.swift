@@ -1,7 +1,7 @@
 import Testing
 import Foundation
-@testable import HeatmapKit
-@testable import HeatmapCore
+@testable import HitHitKit
+@testable import HitHitCore
 
 @Suite struct EventStoreTests {
 
@@ -31,7 +31,7 @@ import Foundation
 
     @Test func roundTripPreservesEvent() {
         let store = EventStore(fileURL: TestFiles.tempEventFile())
-        let original = HeatmapEvent.scroll(
+        let original = HitHitEvent.scroll(
             screen: "detail", scrollDepth: 0.65, scrollOffsetY: 1240,
             screenW: 390, screenH: 844, device: "iPhone15,3",
             orientation: .portrait, ts: 99)

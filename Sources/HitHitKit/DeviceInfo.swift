@@ -1,5 +1,5 @@
 import Foundation
-import HeatmapCore
+import HitHitCore
 
 /// 기기 식별자/방향 유틸.
 enum DeviceInfo {
@@ -18,7 +18,7 @@ enum DeviceInfo {
     }()
 
     /// 크기로부터 방향 판정.
-    static func orientation(width: Double, height: Double) -> HeatmapOrientation {
+    static func orientation(width: Double, height: Double) -> HitHitOrientation {
         width > height ? .landscape : .portrait
     }
 }
